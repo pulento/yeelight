@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 
@@ -68,5 +67,5 @@ func main() {
 		}
 	}
 
-	fmt.Println("Lights:", lights)
+	log.Println("Lights:", lights)
 }
