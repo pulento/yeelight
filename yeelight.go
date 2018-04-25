@@ -8,7 +8,11 @@ Sat:[0] Name:[White] Date:[] Ext:[] Bright:[100] Color_mode:[2] Hue:[0]]
 */
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -38,10 +42,23 @@ type Yeelight struct {
 	Hue       int
 	ColorMode int
 	Support   map[string]bool
+	ReqCount  int
+	Conn      *net.TCPConn
+}
+
+// Command JSON commands sent to lights
+type Command struct {
+	ID     int      `json:"id"`
+	Method string   `json:"method"`
+	Params []string `json:"params"`
 }
 
 var (
 	errWithoutYeelightPrefix = errors.New("Yeelight prefix not found")
+	errResolveTCP            = errors.New("Cannot resolve TCP address")
+	errConnectLight          = errors.New("Cannot connect to light")
+	errCommandNotSupported   = errors.New("Command not supported")
+	errNotConnected          = errors.New("Light not connected")
 )
 
 // parseYeelight returns a Yeelight based on the
@@ -94,6 +111,55 @@ func parseYeelight(header http.Header) (*Yeelight, error) {
 		Hue:       hue,
 		ColorMode: color,
 		Support:   support,
+		ReqCount:  0,
 	}
 	return light, nil
+}
+
+// Connect connects to a light
+func (l *Yeelight) Connect() error {
+	tcpAddr, err := net.ResolveTCPAddr("tcp", l.Address)
+	if err != nil {
+		return err
+	}
+
+	cn, err := net.DialTCP("tcp", nil, tcpAddr)
+	l.Conn = cn
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+var endOfCommand = []byte{'\r', '\n'}
+
+// SendCommand sends "comm" command to a light with variable parameters
+func (l *Yeelight) SendCommand(comm string, params ...string) error {
+	if !l.Support[comm] {
+		return errCommandNotSupported
+	}
+	if l.Conn == nil {
+		return errNotConnected
+	}
+	cmd := &Command{
+		ID:     l.ReqCount,
+		Method: comm,
+		Params: params,
+	}
+	jCmd, err := json.Marshal(cmd)
+	fmt.Println(string(jCmd))
+
+	jCmd = bytes.Join([][]byte{jCmd, endOfCommand}, nil)
+	_, err = l.Conn.Write(jCmd)
+	if err != nil {
+		return err
+	}
+	l.ReqCount++
+	return nil
+}
+
+// Toogle toogle light's power on/off
+func (l *Yeelight) Toggle() error {
+	return l.SendCommand("toggle", "")
 }

@@ -34,7 +34,7 @@ func main() {
 	}
 
 	// Create a map based on light's ID
-	lights := make(map[string]Yeelight)
+	lightsMap := make(map[string]Yeelight)
 	list, err := ssdp.Search(searchType, *w, *l)
 	if err != nil {
 		log.Fatal(err)
@@ -46,9 +46,27 @@ func main() {
 			os.Exit(1)
 		}
 		// Lights respond multiple times to a search
-		if lights[light.ID].ID == "" {
-			lights[light.ID] = *light
+		// Create a map of unique lights ID
+		if lightsMap[light.ID].ID == "" {
+			lightsMap[light.ID] = *light
 		}
 	}
+
+	var lights []Yeelight
+	for _, v := range lightsMap {
+		lights = append(lights, v)
+	}
+
+	for _, l := range lights {
+		err = (&l).Connect()
+		if err != nil {
+			log.Printf("Error connecting to %s: %s", l.Address, err)
+		}
+		err = (&l).Toggle()
+		if err != nil {
+			log.Printf("Error toggling %s: %s", l.Address, err)
+		}
+	}
+
 	fmt.Println("Lights:", lights)
 }
