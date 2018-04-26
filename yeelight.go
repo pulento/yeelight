@@ -132,10 +132,19 @@ func (l *Yeelight) Connect() error {
 	return nil
 }
 
+// Close closes the connection to light
+func (l *Yeelight) Close() error {
+	err := l.Conn.Close()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 var endOfCommand = []byte{'\r', '\n'}
 
 // SendCommand sends "comm" command to a light with variable parameters
-func (l *Yeelight) SendCommand(comm string, params ...string) error {
+func (l *Yeelight) SendCommand(comm string, params ...interface{}) error {
 	if !l.Support[comm] {
 		return errCommandNotSupported
 	}
@@ -145,7 +154,7 @@ func (l *Yeelight) SendCommand(comm string, params ...string) error {
 	cmd := &Command{
 		ID:     l.ReqCount,
 		Method: comm,
-		Params: params,
+		//Params: params,
 	}
 	jCmd, err := json.Marshal(cmd)
 	fmt.Println(string(jCmd))
@@ -159,7 +168,26 @@ func (l *Yeelight) SendCommand(comm string, params ...string) error {
 	return nil
 }
 
-// Toogle toogle light's power on/off
+// Toggle toogle light's power on/off
 func (l *Yeelight) Toggle() error {
 	return l.SendCommand("toggle", "")
+}
+
+const (
+	// SUDDEN effect
+	SUDDEN = iota
+	// SMOOTH effect
+	SMOOTH = iota
+)
+
+// SetBrightness set light's brightness with effect of duration
+func (l *Yeelight) SetBrightness(brightness int, effect int, duration int) error {
+	var str string
+
+	if effect == SUDDEN {
+		str = "sudden"
+	} else if effect == SMOOTH {
+		str = "smooth"
+	}
+	return l.SendCommand("set_bright", str)
 }
