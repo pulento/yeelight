@@ -48,9 +48,22 @@ type Yeelight struct {
 
 // Command JSON commands sent to lights
 type Command struct {
-	ID     int      `json:"id"`
-	Method string   `json:"method"`
-	Params []string `json:"params"`
+	ID     int           `json:"id"`
+	Method string        `json:"method"`
+	Params []interface{} `json:"params"`
+}
+
+// Result JSON results from lights
+type Result struct {
+	ID     int           `json:"id"`
+	Result []interface{} `json:"result,omitempty"`
+	Error  *Error        `json:"error,omitempty"`
+}
+
+// Error codes from lights
+type Error struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
 }
 
 var (
@@ -154,7 +167,7 @@ func (l *Yeelight) SendCommand(comm string, params ...interface{}) error {
 	cmd := &Command{
 		ID:     l.ReqCount,
 		Method: comm,
-		//Params: params,
+		Params: params,
 	}
 	jCmd, err := json.Marshal(cmd)
 	fmt.Println(string(jCmd))
