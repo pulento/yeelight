@@ -33,12 +33,14 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Create a map based on light's ID
-	lightsMap := make(map[string]Yeelight)
 	list, err := ssdp.Search(searchType, *w, *l)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// Create a map based on light's ID
+	lightsMap := make(map[string]Yeelight)
+	var lights []*Yeelight
 	for _, srv := range list {
 		light, err := parseYeelight(srv.Header())
 		if err != nil {
@@ -49,28 +51,36 @@ func main() {
 		// Create a map of unique lights ID
 		if lightsMap[light.ID].ID == "" {
 			lightsMap[light.ID] = *light
+			lights = append(lights, light)
 		}
 	}
 
-	var lights []Yeelight
-	for _, v := range lightsMap {
-		lights = append(lights, v)
-	}
-
-	for i := range lights {
-		err := lights[i].Connect()
+	for i, l := range lights {
+		err := l.Connect()
 		if err != nil {
-			log.Printf("Error connecting to %s: %s", lights[i].Address, err)
+			log.Printf("Error connecting to %s: %s", l.Address, err)
 		} else {
-			log.Printf("Light #%d named %s connected to %s", i, lights[i].Name, lights[i].Address)
+			log.Printf("Light #%d named %s connected to %s", i, l.Name, l.Address)
 		}
 	}
+
 	for _, l := range lights {
-		err = l.Toggle()
+		err := l.Toggle()
+		if err != nil {
+			log.Printf("Error toggling %s: %s", l.Address, err)
+		}
+		err = l.Response()
+		if err != nil {
+			log.Printf("Error getting response from %s: %s", l.Address, err)
+		}
 		time.Sleep(1 * time.Second)
 		err = l.Toggle()
 		if err != nil {
 			log.Printf("Error toggling %s: %s", l.Address, err)
+		}
+		err = l.Response()
+		if err != nil {
+			log.Printf("Error getting response from %s: %s", l.Address, err)
 		}
 	}
 	log.Println("Lights:", lights)

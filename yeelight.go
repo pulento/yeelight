@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"strconv"
@@ -29,21 +30,22 @@ const (
 
 // Yeelight is a light.
 type Yeelight struct {
-	Address   string
-	Name      string
-	ID        string
-	Model     string
-	FW        int
-	Power     int
-	Bright    int
-	Sat       int
-	CT        int
-	RGB       int
-	Hue       int
-	ColorMode int
-	Support   map[string]bool
-	ReqCount  int
-	Conn      *net.TCPConn
+	Address      string
+	Name         string
+	ID           string
+	Model        string
+	CacheControl string
+	FW           int
+	Power        int
+	Bright       int
+	Sat          int
+	CT           int
+	RGB          int
+	Hue          int
+	ColorMode    int
+	Support      map[string]bool
+	ReqCount     int
+	Conn         *net.TCPConn
 }
 
 // Command JSON commands sent to lights
@@ -111,20 +113,21 @@ func parseYeelight(header http.Header) (*Yeelight, error) {
 	}
 
 	light := &Yeelight{
-		Address:   addr[11:],
-		Name:      header.Get("Name"),
-		ID:        header.Get("Id"),
-		Model:     header.Get("Model"),
-		FW:        fw,
-		Power:     power,
-		Bright:    bright,
-		Sat:       sat,
-		CT:        ct,
-		RGB:       rgb,
-		Hue:       hue,
-		ColorMode: color,
-		Support:   support,
-		ReqCount:  0,
+		Address:      addr[11:],
+		Name:         header.Get("Name"),
+		ID:           header.Get("Id"),
+		Model:        header.Get("Model"),
+		CacheControl: header.Get("Cache-Control"),
+		FW:           fw,
+		Power:        power,
+		Bright:       bright,
+		Sat:          sat,
+		CT:           ct,
+		RGB:          rgb,
+		Hue:          hue,
+		ColorMode:    color,
+		Support:      support,
+		ReqCount:     0,
 	}
 	return light, nil
 }
@@ -177,6 +180,20 @@ func (l *Yeelight) SendCommand(comm string, params ...interface{}) error {
 		return err
 	}
 	l.ReqCount++
+	return nil
+}
+
+// Response gets light response
+func (l *Yeelight) Response() error {
+	buf := make([]byte, 1024)
+	if l.Conn == nil {
+		return errNotConnected
+	}
+	len, err := l.Conn.Read(buf)
+	if err != nil {
+		return err
+	}
+	log.Printf("Response Length %d: %s", len, string(buf))
 	return nil
 }
 
