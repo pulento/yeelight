@@ -138,7 +138,6 @@ func (l *Yeelight) Connect() error {
 
 	cn, err := net.DialTCP("tcp", nil, tcpAddr)
 	l.Conn = cn
-
 	if err != nil {
 		return err
 	}
@@ -202,5 +201,5 @@ func (l *Yeelight) SetBrightness(brightness int, effect int, duration int) error
 	} else if effect == SMOOTH {
 		str = "smooth"
 	}
-	return l.SendCommand("set_bright", str)
+	return l.SendCommand("set_bright", brightness, str, duration)
 }

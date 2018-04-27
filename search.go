@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"os"
+	"time"
 
 	"github.com/pulento/go-ssdp"
 )
@@ -56,16 +57,21 @@ func main() {
 		lights = append(lights, v)
 	}
 
-	for _, l := range lights {
-		err = (&l).Connect()
+	for i := range lights {
+		err := lights[i].Connect()
 		if err != nil {
-			log.Printf("Error connecting to %s: %s", l.Address, err)
+			log.Printf("Error connecting to %s: %s", lights[i].Address, err)
+		} else {
+			log.Printf("Light #%d named %s connected to %s", i, lights[i].Name, lights[i].Address)
 		}
-		err = (&l).Toggle()
+	}
+	for _, l := range lights {
+		err = l.Toggle()
+		time.Sleep(1 * time.Second)
+		err = l.Toggle()
 		if err != nil {
 			log.Printf("Error toggling %s: %s", l.Address, err)
 		}
 	}
-
 	log.Println("Lights:", lights)
 }
