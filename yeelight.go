@@ -209,6 +209,22 @@ const (
 	SMOOTH = iota
 )
 
+// SetPower set light's power with effect of duration
+func (l *Yeelight) SetPower(power bool, effect int, duration int) error {
+	var str, p string
+	if power {
+		p = "on"
+	} else {
+		p = "off"
+	}
+	if effect == SUDDEN {
+		str = "sudden"
+	} else if effect == SMOOTH {
+		str = "smooth"
+	}
+	return l.SendCommand("set_bright", p, str, duration)
+}
+
 // SetBrightness set light's brightness with effect of duration
 func (l *Yeelight) SetBrightness(brightness int, effect int, duration int) error {
 	var str string
