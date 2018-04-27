@@ -236,3 +236,8 @@ func (l *Yeelight) SetBrightness(brightness int, effect int, duration int) error
 	}
 	return l.SendCommand("set_bright", brightness, str, duration)
 }
+
+// GetProp gets light properties
+func (l *Yeelight) GetProp(props ...interface{}) error {
+	return l.SendCommand("get_prop", props...)
+}
