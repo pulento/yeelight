@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"yeelight"
+	"bitbucket.org/pulento/yeelight"
 
 	"github.com/pulento/go-ssdp"
 )
@@ -69,7 +69,7 @@ func main() {
 
 	}
 
-	notifications, done, err := lights[0].Listen()
+	notifications, _, err := lights[0].Listen()
 	for _, l := range lights {
 		prop := "power"
 		err := l.GetProp(prop, "bright")
@@ -82,7 +82,7 @@ func main() {
 		}
 	}
 
-	go func(c chan *yeelight.Notification) {
+	go func(c <-chan *yeelight.Notification) {
 		data := <-c
 		log.Println(data)
 	}(notifications)
