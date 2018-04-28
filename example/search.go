@@ -4,7 +4,8 @@ import (
 	"flag"
 	"log"
 	"os"
-	"time"
+
+	"yeelight"
 
 	"github.com/pulento/go-ssdp"
 )
@@ -39,10 +40,10 @@ func main() {
 	}
 
 	// Create a map based on light's ID
-	lightsMap := make(map[string]Yeelight)
-	var lights []*Yeelight
+	lightsMap := make(map[string]yeelight.Yeelight)
+	var lights []*yeelight.Yeelight
 	for _, srv := range list {
-		light, err := parseYeelight(srv.Header())
+		light, err := yeelight.Parse(srv.Header())
 		if err != nil {
 			log.Printf("Invalid response from %s: %s", srv.Location, err)
 			os.Exit(1)
@@ -55,6 +56,9 @@ func main() {
 		}
 	}
 
+	//notifications := make(chan *yeelight.Notification)
+	//done := make(chan struct{})
+
 	for i, l := range lights {
 		err := l.Connect()
 		if err != nil {
@@ -62,7 +66,10 @@ func main() {
 		} else {
 			log.Printf("Light #%d named %s connected to %s", i, l.Name, l.Address)
 		}
+
 	}
+
+	notifications, done, err := lights[0].Listen()
 	for _, l := range lights {
 		prop := "power"
 		err := l.GetProp(prop, "bright")
@@ -75,7 +82,11 @@ func main() {
 		}
 	}
 
-	for _, l := range lights {
+	go func(c chan *yeelight.Notification) {
+		data := <-c
+		log.Println(data)
+	}(notifications)
+	/*for _, l := range lights {
 		err := l.Toggle()
 		if err != nil {
 			log.Printf("Error toggling %s: %s", l.Address, err)
@@ -93,6 +104,6 @@ func main() {
 		if err != nil {
 			log.Printf("Error getting response from %s: %s", l.Address, err)
 		}
-	}
+	}*/
 	log.Println("Lights:", lights)
 }

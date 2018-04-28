@@ -1,4 +1,4 @@
-package main
+package yeelight
 
 /*
 map[Location:[yeelight://10.10.200.205:55443] Server:[POSIX UPnP/1.0 YGLC/1] Model:[mono] Fw_ver:[40]
@@ -8,6 +8,7 @@ Sat:[0] Name:[White] Date:[] Ext:[] Bright:[100] Color_mode:[2] Hue:[0]]
 */
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -62,6 +63,12 @@ type Result struct {
 	Error  *Error        `json:"error,omitempty"`
 }
 
+// Notification represents notification response
+type Notification struct {
+	Method string            `json:"method"`
+	Params map[string]string `json:"params"`
+}
+
 // Error codes from lights
 type Error struct {
 	Code    int    `json:"code"`
@@ -79,7 +86,7 @@ var (
 // parseYeelight returns a Yeelight based on the
 // HTTP headers of its SSDP response represented by header
 // it returns an error if something goes wrong during parsing
-func parseYeelight(header http.Header) (*Yeelight, error) {
+func Parse(header http.Header) (*Yeelight, error) {
 	addr := header.Get("Location")
 	if !strings.HasPrefix(addr, "yeelight://") {
 		return nil, errWithoutYeelightPrefix
@@ -157,6 +164,44 @@ func (l *Yeelight) Close() error {
 }
 
 var endOfCommand = []byte{'\r', '\n'}
+
+// Listen connects to device and listens for NOTIFICATION events
+func (l *Yeelight) Listen() (<-chan *Notification, chan<- struct{}, error) {
+	notifCh := make(chan *Notification)
+	done := make(chan struct{}, 1)
+
+	err := l.Connect()
+	if err != nil {
+		return nil, nil, err
+	}
+	log.Println("Listening Connection established")
+	go func(c net.Conn) {
+		//make sure connection is closed when method returns
+		defer l.Close()
+
+		connReader := bufio.NewReader(c)
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				data, err := connReader.ReadString('\n')
+				if nil == err {
+					var rs Notification
+					fmt.Println(data)
+					json.Unmarshal([]byte(data), &rs)
+					select {
+					case notifCh <- &rs:
+					default:
+						fmt.Println("Channel is full")
+					}
+				}
+			}
+		}
+	}(l.Conn)
+
+	return notifCh, done, nil
+}
 
 // SendCommand sends "comm" command to a light with variable parameters
 func (l *Yeelight) SendCommand(comm string, params ...interface{}) error {
