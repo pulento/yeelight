@@ -4,6 +4,8 @@ import (
 	"flag"
 	"log"
 	"os"
+	"sync"
+	"time"
 
 	"bitbucket.org/pulento/yeelight"
 
@@ -16,6 +18,7 @@ var (
 )
 
 func main() {
+	var wg sync.WaitGroup
 	w := flag.Int("w", 1, "\twait time")
 	l := flag.String("l", "", "\tlocal address to listen")
 	v := flag.Bool("v", false, "\tverbose mode")
@@ -56,54 +59,47 @@ func main() {
 		}
 	}
 
-	//notifications := make(chan *yeelight.Notification)
-	//done := make(chan struct{})
+	notifications := make(chan *yeelight.Notification)
 
 	for i, l := range lights {
-		err := l.Connect()
+		//err := l.Connect()
+		_, err = l.Listen(notifications)
 		if err != nil {
 			log.Printf("Error connecting to %s: %s", l.Address, err)
 		} else {
 			log.Printf("Light #%d named %s connected to %s", i, l.Name, l.Address)
 		}
-
 	}
 
-	notifications, _, err := lights[0].Listen()
+	wg.Add(1)
+	go func(c <-chan *yeelight.Notification) {
+		defer wg.Done()
+		log.Println("Channel receiver started")
+		for {
+			select {
+			case <-c:
+				data := <-c
+				log.Println("Data from channel", data)
+				//default:
+				//time.Sleep(10 * time.Millisecond)
+			}
+		}
+	}(notifications)
+
+	time.Sleep(10 * time.Second)
 	for _, l := range lights {
 		prop := "power"
 		err := l.GetProp(prop, "bright")
 		if err != nil {
 			log.Printf("Error getting property %s on %s: %s", prop, l.Address, err)
 		}
-		err = l.Response()
+		/*err = l.Response()
 		if err != nil {
 			log.Printf("Error getting response from %s: %s", l.Address, err)
-		}
+		}*/
 	}
 
-	go func(c <-chan *yeelight.Notification) {
-		data := <-c
-		log.Println(data)
-	}(notifications)
-	/*for _, l := range lights {
-		err := l.Toggle()
-		if err != nil {
-			log.Printf("Error toggling %s: %s", l.Address, err)
-		}
-		err = l.Response()
-		if err != nil {
-			log.Printf("Error getting response from %s: %s", l.Address, err)
-		}
-		time.Sleep(1 * time.Second)
-		err = l.Toggle()
-		if err != nil {
-			log.Printf("Error toggling %s: %s", l.Address, err)
-		}
-		err = l.Response()
-		if err != nil {
-			log.Printf("Error getting response from %s: %s", l.Address, err)
-		}
-	}*/
+	wg.Wait()
 	log.Println("Lights:", lights)
+
 }

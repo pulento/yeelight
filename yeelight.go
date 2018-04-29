@@ -12,7 +12,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -83,7 +82,7 @@ var (
 	errNotConnected          = errors.New("Light not connected")
 )
 
-// parseYeelight returns a Yeelight based on the
+// Parse returns a Yeelight based on the
 // HTTP headers of its SSDP response represented by header
 // it returns an error if something goes wrong during parsing
 func Parse(header http.Header) (*Yeelight, error) {
@@ -165,42 +164,42 @@ func (l *Yeelight) Close() error {
 
 var endOfCommand = []byte{'\r', '\n'}
 
-// Listen connects to device and listens for NOTIFICATION events
-func (l *Yeelight) Listen() (<-chan *Notification, chan<- struct{}, error) {
-	notifCh := make(chan *Notification)
-	done := make(chan struct{}, 1)
+// Listen connects to light and listens for events
+// which are sent to notifCh
+func (l *Yeelight) Listen(notifCh chan<- *Notification) (chan<- bool, error) {
+	done := make(chan bool)
 
 	err := l.Connect()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	log.Println("Listening Connection established")
+	log.Printf("Listening Connection established for %s on %s", l.Name, l.Address)
 	go func(c net.Conn) {
+		var notif Notification
+		var result Result
+
 		//make sure connection is closed when method returns
 		defer l.Close()
 
-		connReader := bufio.NewReader(c)
 		for {
+			log.Println("Getting line")
+			data, err := l.Response()
+			if err == nil {
+				log.Printf("Sending to Channel: %s from %s at %s", strings.TrimSuffix(data, "\r\n"), l.Name, l.Address)
+				json.Unmarshal([]byte(data), &notif)
+				json.Unmarshal([]byte(data), &result)
+			}
 			select {
 			case <-done:
 				return
-			default:
-				data, err := connReader.ReadString('\n')
-				if nil == err {
-					var rs Notification
-					fmt.Println(data)
-					json.Unmarshal([]byte(data), &rs)
-					select {
-					case notifCh <- &rs:
-					default:
-						fmt.Println("Channel is full")
-					}
-				}
+			case notifCh <- &notif:
+				notifCh <- &notif
+				log.Println("Data sent to channel")
 			}
 		}
 	}(l.Conn)
 
-	return notifCh, done, nil
+	return done, nil
 }
 
 // SendCommand sends "comm" command to a light with variable parameters
@@ -217,7 +216,7 @@ func (l *Yeelight) SendCommand(comm string, params ...interface{}) error {
 		Params: params,
 	}
 	jCmd, err := json.Marshal(cmd)
-	fmt.Println(string(jCmd))
+	log.Printf("Sending command %s to %s at %s", string(jCmd), l.Name, l.Address)
 
 	jCmd = bytes.Join([][]byte{jCmd, endOfCommand}, nil)
 	_, err = l.Conn.Write(jCmd)
@@ -229,17 +228,18 @@ func (l *Yeelight) SendCommand(comm string, params ...interface{}) error {
 }
 
 // Response gets light response
-func (l *Yeelight) Response() error {
-	buf := make([]byte, 1024)
+func (l *Yeelight) Response() (string, error) {
 	if l.Conn == nil {
-		return errNotConnected
+		return "", errNotConnected
 	}
-	len, err := l.Conn.Read(buf)
+	connReader := bufio.NewReader(l.Conn)
+	resp, err := connReader.ReadString('\n')
+
 	if err != nil {
-		return err
+		return "", err
 	}
-	log.Printf("Response Length %d: %s", len, string(buf))
-	return nil
+	//log.Printf("Response from %s at %s: %s", l.Name, l.Address, resp)
+	return resp, nil
 }
 
 // Toggle toogle light's power on/off
