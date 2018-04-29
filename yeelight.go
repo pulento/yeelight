@@ -55,7 +55,7 @@ type Command struct {
 	Params []interface{} `json:"params"`
 }
 
-// Result JSON results from lights
+// Result represent results to commands from lights
 type Result struct {
 	ID     int           `json:"id"`
 	Result []interface{} `json:"result,omitempty"`
@@ -72,6 +72,12 @@ type Notification struct {
 type Error struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
+}
+
+// ResultNotification is the generic response
+type ResultNotification struct {
+	*Result
+	*Notification
 }
 
 var (
@@ -166,7 +172,7 @@ var endOfCommand = []byte{'\r', '\n'}
 
 // Listen connects to light and listens for events
 // which are sent to notifCh
-func (l *Yeelight) Listen(notifCh chan<- *Notification) (chan<- bool, error) {
+func (l *Yeelight) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) {
 	done := make(chan bool)
 
 	err := l.Connect()
@@ -177,24 +183,28 @@ func (l *Yeelight) Listen(notifCh chan<- *Notification) (chan<- bool, error) {
 	go func(c net.Conn) {
 		var notif Notification
 		var result Result
-
+		var resnot *ResultNotification
 		//make sure connection is closed when method returns
 		defer l.Close()
 
 		for {
-			log.Println("Getting line")
-			data, err := l.Response()
+			data, err := l.Message()
 			if err == nil {
 				log.Printf("Sending to Channel: %s from %s at %s", strings.TrimSuffix(data, "\r\n"), l.Name, l.Address)
 				json.Unmarshal([]byte(data), &notif)
 				json.Unmarshal([]byte(data), &result)
+				if notif.Method != "" {
+					resnot = &ResultNotification{nil, &notif}
+				} else {
+					resnot = &ResultNotification{&result, nil}
+				}
 			}
 			select {
 			case <-done:
 				return
-			case notifCh <- &notif:
-				notifCh <- &notif
-				log.Println("Data sent to channel")
+			case notifCh <- resnot:
+				notifCh <- resnot
+				//log.Println("Data sent to channel")
 			}
 		}
 	}(l.Conn)
@@ -227,8 +237,8 @@ func (l *Yeelight) SendCommand(comm string, params ...interface{}) error {
 	return nil
 }
 
-// Response gets light response
-func (l *Yeelight) Response() (string, error) {
+// Message gets light messages
+func (l *Yeelight) Message() (string, error) {
 	if l.Conn == nil {
 		return "", errNotConnected
 	}
@@ -238,7 +248,7 @@ func (l *Yeelight) Response() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	//log.Printf("Response from %s at %s: %s", l.Name, l.Address, resp)
+	//log.Printf("Message from %s at %s: %s", l.Name, l.Address, resp)
 	return resp, nil
 }
 

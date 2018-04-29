@@ -59,11 +59,11 @@ func main() {
 		}
 	}
 
-	notifications := make(chan *yeelight.Notification)
+	resnot := make(chan *yeelight.ResultNotification)
 
 	for i, l := range lights {
 		//err := l.Connect()
-		_, err = l.Listen(notifications)
+		_, err = l.Listen(resnot)
 		if err != nil {
 			log.Printf("Error connecting to %s: %s", l.Address, err)
 		} else {
@@ -72,21 +72,23 @@ func main() {
 	}
 
 	wg.Add(1)
-	go func(c <-chan *yeelight.Notification) {
+	go func(c <-chan *yeelight.ResultNotification) {
 		defer wg.Done()
 		log.Println("Channel receiver started")
 		for {
 			select {
 			case <-c:
 				data := <-c
-				log.Println("Data from channel", data)
-				//default:
-				//time.Sleep(10 * time.Millisecond)
+				if data.Notification != nil {
+					log.Println("Notification from Channel", *data.Notification)
+				} else {
+					log.Println("Result from Channel", *data.Result)
+				}
 			}
 		}
-	}(notifications)
+	}(resnot)
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 	for _, l := range lights {
 		prop := "power"
 		err := l.GetProp(prop, "bright")
