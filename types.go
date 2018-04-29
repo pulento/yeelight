@@ -43,6 +43,7 @@ type Command struct {
 
 // Result represent results to commands from lights
 type Result struct {
+	DevID  string
 	ID     int           `json:"id"`
 	Result []interface{} `json:"result,omitempty"`
 	Error  *Error        `json:"error,omitempty"`
@@ -50,6 +51,7 @@ type Result struct {
 
 // Notification represents notification response
 type Notification struct {
+	DevID  string
 	Method string            `json:"method"`
 	Params map[string]string `json:"params"`
 }

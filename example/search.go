@@ -88,7 +88,7 @@ func main() {
 		}
 	}(resnot)
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(3 * time.Second)
 	for _, l := range lights {
 		prop := "power"
 		err := l.GetProp(prop, "bright")

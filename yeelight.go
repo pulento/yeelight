@@ -124,8 +124,10 @@ func (l *Yeelight) Listen(notifCh chan<- *ResultNotification) (chan<- bool, erro
 				json.Unmarshal([]byte(data), &notif)
 				json.Unmarshal([]byte(data), &result)
 				if notif.Method != "" {
+					notif.DevID = l.ID
 					resnot = &ResultNotification{nil, &notif}
 				} else {
+					result.DevID = l.ID
 					resnot = &ResultNotification{&result, nil}
 				}
 			}
