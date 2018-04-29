@@ -2,3 +2,5 @@
 .vscode
 yeego
 debug
+example/example
+example/debug
