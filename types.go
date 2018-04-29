@@ -14,8 +14,8 @@ const (
 	OFFLINE = iota
 )
 
-// Yeelight is a light.
-type Yeelight struct {
+// Light is the light :)
+type Light struct {
 	Address      string
 	Name         string
 	ID           string

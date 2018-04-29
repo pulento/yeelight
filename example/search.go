@@ -43,8 +43,8 @@ func main() {
 	}
 
 	// Create a map based on light's ID
-	lightsMap := make(map[string]yeelight.Yeelight)
-	var lights []*yeelight.Yeelight
+	lightsMap := make(map[string]yeelight.Light)
+	var lights []*yeelight.Light
 	for _, srv := range list {
 		light, err := yeelight.Parse(srv.Header())
 		if err != nil {

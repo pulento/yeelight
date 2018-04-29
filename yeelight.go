@@ -21,7 +21,7 @@ import (
 // Parse returns a Yeelight based on the
 // HTTP headers of its SSDP response represented by header
 // it returns an error if something goes wrong during parsing
-func Parse(header http.Header) (*Yeelight, error) {
+func Parse(header http.Header) (*Light, error) {
 	addr := header.Get("Location")
 	if !strings.HasPrefix(addr, "yeelight://") {
 		return nil, errWithoutYeelightPrefix
@@ -54,7 +54,7 @@ func Parse(header http.Header) (*Yeelight, error) {
 		support[v] = true
 	}
 
-	light := &Yeelight{
+	light := &Light{
 		Address:      addr[11:],
 		Name:         header.Get("Name"),
 		ID:           header.Get("Id"),
@@ -75,7 +75,7 @@ func Parse(header http.Header) (*Yeelight, error) {
 }
 
 // Connect connects to a light
-func (l *Yeelight) Connect() error {
+func (l *Light) Connect() error {
 	tcpAddr, err := net.ResolveTCPAddr("tcp", l.Address)
 	if err != nil {
 		return err
@@ -90,7 +90,7 @@ func (l *Yeelight) Connect() error {
 }
 
 // Close closes the connection to light
-func (l *Yeelight) Close() error {
+func (l *Light) Close() error {
 	err := l.Conn.Close()
 	if err != nil {
 		return err
@@ -102,7 +102,7 @@ var endOfCommand = []byte{'\r', '\n'}
 
 // Listen connects to light and listens for events
 // which are sent to notifCh
-func (l *Yeelight) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) {
+func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) {
 	done := make(chan bool)
 
 	err := l.Connect()
@@ -145,7 +145,7 @@ func (l *Yeelight) Listen(notifCh chan<- *ResultNotification) (chan<- bool, erro
 }
 
 // SendCommand sends "comm" command to a light with variable parameters
-func (l *Yeelight) SendCommand(comm string, params ...interface{}) error {
+func (l *Light) SendCommand(comm string, params ...interface{}) error {
 	if !l.Support[comm] {
 		return errCommandNotSupported
 	}
@@ -170,7 +170,7 @@ func (l *Yeelight) SendCommand(comm string, params ...interface{}) error {
 }
 
 // Message gets light messages
-func (l *Yeelight) Message() (string, error) {
+func (l *Light) Message() (string, error) {
 	if l.Conn == nil {
 		return "", errNotConnected
 	}
@@ -185,7 +185,7 @@ func (l *Yeelight) Message() (string, error) {
 }
 
 // Toggle toogle light's power on/off
-func (l *Yeelight) Toggle() error {
+func (l *Light) Toggle() error {
 	return l.SendCommand("toggle", "")
 }
 
@@ -197,7 +197,7 @@ const (
 )
 
 // SetPower set light's power with effect of duration
-func (l *Yeelight) SetPower(power bool, effect int, duration int) error {
+func (l *Light) SetPower(power bool, effect int, duration int) error {
 	var str, p string
 	if power {
 		p = "on"
@@ -213,7 +213,7 @@ func (l *Yeelight) SetPower(power bool, effect int, duration int) error {
 }
 
 // SetBrightness set light's brightness with effect of duration
-func (l *Yeelight) SetBrightness(brightness int, effect int, duration int) error {
+func (l *Light) SetBrightness(brightness int, effect int, duration int) error {
 	var str string
 
 	if effect == SUDDEN {
@@ -225,6 +225,6 @@ func (l *Yeelight) SetBrightness(brightness int, effect int, duration int) error
 }
 
 // GetProp gets light properties
-func (l *Yeelight) GetProp(props ...interface{}) error {
+func (l *Light) GetProp(props ...interface{}) error {
 	return l.SendCommand("get_prop", props...)
 }
