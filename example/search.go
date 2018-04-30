@@ -19,10 +19,11 @@ var (
 
 func main() {
 	var wg sync.WaitGroup
-	w := flag.Int("w", 1, "\twait time")
+	w := flag.Int("w", 1, "\tSSDP wait time")
 	l := flag.String("l", "", "\tlocal address to listen")
 	v := flag.Bool("v", false, "\tverbose mode")
 	h := flag.Bool("h", false, "\tshow help")
+	t := flag.Int("t", 3, "\tListeners wait time")
 	flag.Parse()
 	if *h {
 		flag.Usage()
@@ -60,9 +61,9 @@ func main() {
 	}
 
 	resnot := make(chan *yeelight.ResultNotification)
-
+	done := make(chan bool)
+	log.Printf("Waiting for lights events for %d [sec]", *t)
 	for i, l := range lights {
-		//err := l.Connect()
 		_, err = l.Listen(resnot)
 		if err != nil {
 			log.Printf("Error connecting to %s: %s", l.Address, err)
@@ -72,7 +73,7 @@ func main() {
 	}
 
 	wg.Add(1)
-	go func(c <-chan *yeelight.ResultNotification) {
+	go func(c <-chan *yeelight.ResultNotification, done <-chan bool) {
 		defer wg.Done()
 		log.Println("Channel receiver started")
 		for {
@@ -84,23 +85,26 @@ func main() {
 				} else {
 					log.Println("Result from Channel", *data.Result)
 				}
+			case <-done:
+				return
 			}
 		}
-	}(resnot)
+	}(resnot, done)
 
-	time.Sleep(3 * time.Second)
 	for _, l := range lights {
 		prop := "power"
 		err := l.GetProp(prop, "bright")
 		if err != nil {
 			log.Printf("Error getting property %s on %s: %s", prop, l.Address, err)
 		}
-		/*err = l.Response()
+		/*_, err = l.Message()
 		if err != nil {
 			log.Printf("Error getting response from %s: %s", l.Address, err)
 		}*/
 	}
 
+	time.Sleep(time.Duration(*t) * time.Second)
+	done <- true
 	wg.Wait()
 	log.Println("Lights:", lights)
 
