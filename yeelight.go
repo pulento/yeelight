@@ -16,7 +16,47 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	ssdp "github.com/pulento/go-ssdp"
 )
+
+var (
+	mcastAddress = "239.255.255.250:1982"
+	searchType   = "wifi_bulb"
+)
+
+// Search search for lights from some time using SSDP and
+// returns a list of lights found
+func Search(time int, localAddr string) ([]*Light, error) {
+	//ssdp.Logger = log.New(os.Stderr, "[SSDP] ", log.LstdFlags)
+	err := ssdp.SetMulticastSendAddrIPv4(mcastAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	list, err := ssdp.Search(searchType, time, localAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a map based on light's ID
+	lightsMap := make(map[string]Light)
+	var lights []*Light
+	for _, srv := range list {
+		light, err := Parse(srv.Header())
+		if err != nil {
+			log.Printf("Invalid response from %s: %s", srv.Location, err)
+			return nil, err
+		}
+		// Lights respond multiple times to a search
+		// Create a map of unique lights ID
+		if lightsMap[light.ID].ID == "" {
+			lightsMap[light.ID] = *light
+			lights = append(lights, light)
+		}
+	}
+	return lights, nil
+}
 
 // Parse returns a Yeelight based on the
 // HTTP headers of its SSDP response represented by header

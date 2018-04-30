@@ -3,13 +3,10 @@ package main
 import (
 	"flag"
 	"log"
-	"os"
 	"sync"
 	"time"
 
 	"bitbucket.org/pulento/yeelight"
-
-	"github.com/pulento/go-ssdp"
 )
 
 var (
@@ -21,7 +18,6 @@ func main() {
 	var wg sync.WaitGroup
 	w := flag.Int("w", 1, "\tSSDP wait time")
 	l := flag.String("l", "", "\tlocal address to listen")
-	v := flag.Bool("v", false, "\tverbose mode")
 	h := flag.Bool("h", false, "\tshow help")
 	t := flag.Int("t", 3, "\tListeners wait time")
 	flag.Parse()
@@ -29,37 +25,11 @@ func main() {
 		flag.Usage()
 		return
 	}
-	if *v {
-		ssdp.Logger = log.New(os.Stderr, "[SSDP] ", log.LstdFlags)
-	}
 
-	err := ssdp.SetMulticastSendAddrIPv4(mcastAddress)
+	lights, err := yeelight.Search(*w, *l)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Error searching lights cannot continue:", err)
 	}
-
-	list, err := ssdp.Search(searchType, *w, *l)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Create a map based on light's ID
-	lightsMap := make(map[string]yeelight.Light)
-	var lights []*yeelight.Light
-	for _, srv := range list {
-		light, err := yeelight.Parse(srv.Header())
-		if err != nil {
-			log.Printf("Invalid response from %s: %s", srv.Location, err)
-			os.Exit(1)
-		}
-		// Lights respond multiple times to a search
-		// Create a map of unique lights ID
-		if lightsMap[light.ID].ID == "" {
-			lightsMap[light.ID] = *light
-			lights = append(lights, light)
-		}
-	}
-
 	resnot := make(chan *yeelight.ResultNotification)
 	done := make(chan bool)
 	log.Printf("Waiting for lights events for %d [sec]", *t)
