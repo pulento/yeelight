@@ -74,4 +74,5 @@ var (
 	errConnectLight          = errors.New("Cannot connect to light")
 	errCommandNotSupported   = errors.New("Command not supported")
 	errNotConnected          = errors.New("Light not connected")
+	errInvalidParam          = errors.New("Invalid parameter value")
 )

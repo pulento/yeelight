@@ -272,6 +272,38 @@ func (l *Light) SetTemperature(temp int, duration int) error {
 	return l.SendCommand("set_ct_abx", temp, str, duration)
 }
 
+// SetRGB set light's color in RGB format with effect of duration
+func (l *Light) SetRGB(rgb uint32, duration int) error {
+	var str string
+
+	if rgb > 0xffffff {
+		return errInvalidParam
+	}
+	if duration > 0 {
+		str = "smooth"
+	} else {
+		str = "sudden"
+		duration = 0
+	}
+	return l.SendCommand("set_rgb", rgb, str, duration)
+}
+
+// SetHSV set light's color in HSV format with effect of duration
+func (l *Light) SetHSV(hsv uint16, sat uint8, duration int) error {
+	var str string
+
+	if sat > 100 || hsv > 359 {
+		return errInvalidParam
+	}
+	if duration > 0 {
+		str = "smooth"
+	} else {
+		str = "sudden"
+		duration = 0
+	}
+	return l.SendCommand("set_hsv", hsv, sat, str, duration)
+}
+
 // SetName set light's name
 func (l *Light) SetName(name string, duration int) error {
 	return l.SendCommand("set_name", name)
