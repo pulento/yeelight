@@ -97,10 +97,6 @@ func main() {
 		if err != nil {
 			log.Printf("Error getting property %s on %s: %s", prop, l.Address, err)
 		}
-		/*_, err = l.Message()
-		if err != nil {
-			log.Printf("Error getting response from %s: %s", l.Address, err)
-		}*/
 	}
 
 	time.Sleep(time.Duration(*t) * time.Second)
