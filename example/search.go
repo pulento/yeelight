@@ -9,11 +9,6 @@ import (
 	"bitbucket.org/pulento/yeelight"
 )
 
-var (
-	mcastAddress = "239.255.255.250:1982"
-	searchType   = "wifi_bulb"
-)
-
 func main() {
 	var wg sync.WaitGroup
 	w := flag.Int("w", 1, "\tSSDP wait time")
