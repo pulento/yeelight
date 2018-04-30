@@ -237,24 +237,44 @@ func (l *Light) SetPower(power bool, effect int, duration int) error {
 	} else {
 		p = "off"
 	}
-	if effect == SUDDEN {
-		str = "sudden"
-	} else if effect == SMOOTH {
+	if duration > 0 {
 		str = "smooth"
+	} else {
+		str = "sudden"
+		duration = 0
 	}
 	return l.SendCommand("set_bright", p, str, duration)
 }
 
 // SetBrightness set light's brightness with effect of duration
-func (l *Light) SetBrightness(brightness int, effect int, duration int) error {
+func (l *Light) SetBrightness(brightness int, duration int) error {
 	var str string
 
-	if effect == SUDDEN {
-		str = "sudden"
-	} else if effect == SMOOTH {
+	if duration > 0 {
 		str = "smooth"
+	} else {
+		str = "sudden"
+		duration = 0
 	}
 	return l.SendCommand("set_bright", brightness, str, duration)
+}
+
+// SetTemperature set light's color temperature with effect of duration
+func (l *Light) SetTemperature(temp int, duration int) error {
+	var str string
+
+	if duration > 0 {
+		str = "smooth"
+	} else {
+		str = "sudden"
+		duration = 0
+	}
+	return l.SendCommand("set_ct_abx", temp, str, duration)
+}
+
+// SetName set light's name
+func (l *Light) SetName(name string, duration int) error {
+	return l.SendCommand("set_name", name)
 }
 
 // GetProp gets light properties
