@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	ssdp "github.com/pulento/go-ssdp"
 )
@@ -16,6 +17,7 @@ import (
 var (
 	mcastAddress = "239.255.255.250:1982"
 	searchType   = "wifi_bulb"
+	connTimeout  = 3 * time.Second
 )
 
 // Search search for lights from some time using SSDP and
@@ -109,13 +111,10 @@ func Parse(header http.Header) (*Light, error) {
 
 // Connect connects to a light
 func (l *Light) Connect() error {
-	tcpAddr, err := net.ResolveTCPAddr("tcp", l.Address)
-	if err != nil {
-		return err
-	}
+	d := net.Dialer{Timeout: connTimeout}
+	cn, err := d.Dial("tcp", l.Address)
 
-	cn, err := net.DialTCP("tcp", nil, tcpAddr)
-	l.Conn = cn
+	l.Conn = cn.(*net.TCPConn)
 	if err != nil {
 		return err
 	}
