@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -21,7 +22,7 @@ var (
 )
 
 // Search search for lights from some time using SSDP and
-// returns a list of lights found
+// returns a map of lights found indexed by its ID
 func Search(time int, localAddr string) (map[string]*Light, error) {
 	//ssdp.Logger = log.New(os.Stderr, "[SSDP] ", log.LstdFlags)
 	err := ssdp.SetMulticastSendAddrIPv4(mcastAddress)
@@ -159,11 +160,16 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 				if notif.Method != "" {
 					notif.DevID = l.ID
 					resnot = &ResultNotification{nil, &notif}
+					l.processNotification(&notif)
 				} else {
 					result.DevID = l.ID
 					resnot = &ResultNotification{&result, nil}
 				}
 			} else {
+				if err == io.EOF {
+					log.Printf("Connection closed for %s [%s] to %s", l.ID, l.Name, l.Address)
+					return
+				}
 				log.Println("Error receiving message:", err)
 			}
 			select {
@@ -176,6 +182,30 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 	}(l.Conn)
 
 	return done, nil
+}
+
+func (l *Light) processNotification(n *Notification) error {
+	/*
+		mapNotificationS := map[string]*string{
+			"name":          &l.Name,
+			"id":            &l.ID,
+			"model":         &l.Model,
+			"cache-control": &l.CacheControl,
+		}
+	*/
+	log.Println(n)
+	if n.Method == "props" {
+		for k, v := range n.Params {
+			if k == "power" {
+				if v == "on" {
+					l.Power = 1
+				} else {
+					l.Power = 0
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // SendCommand sends "comm" command to a light with variable parameters
