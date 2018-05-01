@@ -31,7 +31,7 @@ type Light struct {
 	ColorMode    int             `json:"color-mode"`
 	Support      map[string]bool `json:"support"`
 	ReqCount     int             `json:"reqcount"`
-	Conn         *net.TCPConn
+	Conn         *net.TCPConn    `json:"-"`
 }
 
 // Command JSON commands sent to lights
