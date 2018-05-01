@@ -16,21 +16,21 @@ const (
 
 // Light is the light :)
 type Light struct {
-	Address      string
-	Name         string
-	ID           string
-	Model        string
-	CacheControl string
-	FW           int
-	Power        int
-	Bright       int
-	Sat          int
-	CT           int
-	RGB          int
-	Hue          int
-	ColorMode    int
-	Support      map[string]bool
-	ReqCount     int
+	Address      string          `json:"address"`
+	Name         string          `json:"name"`
+	ID           string          `json:"id"`
+	Model        string          `json:"model"`
+	CacheControl string          `json:"cache-control"`
+	FW           int             `json:"fw"`
+	Power        int             `json:"power"`
+	Bright       int             `json:"bright"`
+	Sat          int             `json:"sat"`
+	CT           int             `json:"ct"`
+	RGB          int             `json:"rgb"`
+	Hue          int             `json:"hue"`
+	ColorMode    int             `json:"color-mode"`
+	Support      map[string]bool `json:"support"`
+	ReqCount     int             `json:"reqcount"`
 	Conn         *net.TCPConn
 }
 

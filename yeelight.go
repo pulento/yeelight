@@ -22,7 +22,7 @@ var (
 
 // Search search for lights from some time using SSDP and
 // returns a list of lights found
-func Search(time int, localAddr string) ([]*Light, error) {
+func Search(time int, localAddr string) (map[string]*Light, error) {
 	//ssdp.Logger = log.New(os.Stderr, "[SSDP] ", log.LstdFlags)
 	err := ssdp.SetMulticastSendAddrIPv4(mcastAddress)
 	if err != nil {
@@ -35,8 +35,7 @@ func Search(time int, localAddr string) ([]*Light, error) {
 	}
 
 	// Create a map based on light's ID
-	lightsMap := make(map[string]Light)
-	var lights []*Light
+	lightsMap := make(map[string]*Light)
 	for _, srv := range list {
 		light, err := Parse(srv.Header())
 		if err != nil {
@@ -44,13 +43,12 @@ func Search(time int, localAddr string) ([]*Light, error) {
 			return nil, err
 		}
 		// Lights respond multiple times to a search
-		// Create a map of unique lights ID
-		if lightsMap[light.ID].ID == "" {
-			lightsMap[light.ID] = *light
-			lights = append(lights, light)
+		if lightsMap[light.ID] == nil {
+			lightsMap[light.ID] = light
 		}
 	}
-	return lights, nil
+	//log.Println(lightsMap)
+	return lightsMap, nil
 }
 
 // Parse returns a Yeelight based on the
@@ -168,7 +166,6 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 				return
 			case notifCh <- resnot:
 				notifCh <- resnot
-				//log.Println("Data sent to channel")
 			}
 		}
 	}(l.Conn)

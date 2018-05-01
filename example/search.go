@@ -33,7 +33,7 @@ func main() {
 		if err != nil {
 			log.Printf("Error connecting to %s: %s", l.Address, err)
 		} else {
-			log.Printf("Light #%d named %s connected to %s", i, l.Name, l.Address)
+			log.Printf("Light %s named %s connected to %s", i, l.Name, l.Address)
 		}
 	}
 
@@ -44,11 +44,13 @@ func main() {
 		for {
 			select {
 			case <-c:
-				data := <-c
-				if data.Notification != nil {
-					log.Println("Notification from Channel", *data.Notification)
-				} else {
-					log.Println("Result from Channel", *data.Result)
+				{
+					data := <-c
+					if data.Notification != nil {
+						log.Println("Notification from Channel", *data.Notification)
+					} else {
+						log.Println("Result from Channel", *data.Result)
+					}
 				}
 			case <-done:
 				return
