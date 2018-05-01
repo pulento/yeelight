@@ -1,1 +1,1 @@
-# Yeelight Backend on Go
+# Xiaomi Yeelight lights API for Go
