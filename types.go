@@ -52,8 +52,8 @@ type Result struct {
 // Notification represents notification response
 type Notification struct {
 	DevID  string
-	Method string            `json:"method"`
-	Params map[string]string `json:"params"`
+	Method string                 `json:"method"`
+	Params map[string]interface{} `json:"params"`
 }
 
 // Error codes from lights

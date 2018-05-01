@@ -185,22 +185,44 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 }
 
 func (l *Light) processNotification(n *Notification) error {
-	/*
-		mapNotificationS := map[string]*string{
-			"name":          &l.Name,
-			"id":            &l.ID,
-			"model":         &l.Model,
-			"cache-control": &l.CacheControl,
-		}
-	*/
-	log.Println(n)
+	mapNotificationS := map[string]*string{
+		"name":          &l.Name,
+		"id":            &l.ID,
+		"model":         &l.Model,
+		"cache-control": &l.CacheControl,
+	}
+	mapNotificationI := map[string]*int{
+		"fw_ver":     &l.FW,
+		"bright":     &l.Bright,
+		"color_mode": &l.ColorMode,
+		"ct":         &l.CT,
+		"rgb":        &l.RGB,
+		"hue":        &l.Hue,
+		"sat":        &l.Sat,
+	}
+
 	if n.Method == "props" {
+		//log.Println(n.Params)
 		for k, v := range n.Params {
 			if k == "power" {
 				if v == "on" {
 					l.Power = 1
 				} else {
 					l.Power = 0
+				}
+			}
+		}
+		// FIXME: JSON dedicated struct for params would be better ?
+		for k, v := range mapNotificationI {
+			if n.Params[k] != nil {
+				*v = int(n.Params[k].(float64))
+			}
+		}
+		for k, v := range mapNotificationS {
+			if n.Params[k] != nil {
+				str := (n.Params[k]).(string)
+				if str != "" {
+					*v = str
 				}
 			}
 		}
@@ -252,13 +274,6 @@ func (l *Light) Message() (string, error) {
 func (l *Light) Toggle() error {
 	return l.SendCommand("toggle", "")
 }
-
-const (
-	// SUDDEN effect
-	SUDDEN = iota
-	// SMOOTH effect
-	SMOOTH = iota
-)
 
 // SetPower set light's power with effect of duration
 func (l *Light) SetPower(power bool, effect int, duration int) error {
