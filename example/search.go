@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"bitbucket.org/pulento/yeelight"
+	"github.com/pulento/yeelight"
 )
 
 func main() {
