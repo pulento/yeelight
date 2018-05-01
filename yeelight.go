@@ -151,8 +151,11 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 			data, err := l.Message()
 			if err == nil {
 				log.Printf("Sending to Channel: %s from %s at %s", strings.TrimSuffix(data, "\r\n"), l.Name, l.Address)
-				json.Unmarshal([]byte(data), &notif)
-				json.Unmarshal([]byte(data), &result)
+				err := json.Unmarshal([]byte(data), &notif)
+				err = json.Unmarshal([]byte(data), &result)
+				if err != nil {
+					log.Println("Error parsing message:", err)
+				}
 				if notif.Method != "" {
 					notif.DevID = l.ID
 					resnot = &ResultNotification{nil, &notif}
@@ -160,6 +163,8 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 					result.DevID = l.ID
 					resnot = &ResultNotification{&result, nil}
 				}
+			} else {
+				log.Println("Error receiving message:", err)
 			}
 			select {
 			case <-done:
