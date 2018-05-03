@@ -106,6 +106,7 @@ func Parse(header http.Header) (*Light, error) {
 		Support:      support,
 		ReqCount:     0,
 		Calls:        make(map[int32]*Command),
+		ResC:         make(chan *Result, 1),
 	}
 	return light, nil
 }
@@ -234,10 +235,9 @@ func (l *Light) processNotification(n *Notification) error {
 }
 
 func (l *Light) processResult(r *Result) error {
-	//log.Println(r)
 	if l.Calls[int32(r.ID)] != nil {
-		log.Println("Reply to request:", r.ID)
 		delete(l.Calls, int32(r.ID))
+		l.ResC <- r
 	} else {
 		log.Println("Received reply to unknown request:", r.ID)
 	}
@@ -270,8 +270,13 @@ func (l *Light) SendCommand(comm string, params ...interface{}) (int32, error) {
 }
 
 // WaitResult waits for a result on a request with res ID
-func (l *Light) WaitResult(res int32) {
-
+func (l *Light) WaitResult(res int32) *Result {
+	for {
+		r := <-l.ResC
+		if int32(r.ID) == res {
+			return r
+		}
+	}
 }
 
 // Message gets light messages

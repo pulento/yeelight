@@ -33,6 +33,7 @@ type Light struct {
 	ReqCount     int32              `json:"reqcount"`
 	Conn         *net.TCPConn       `json:"-"`
 	Calls        map[int32]*Command `json:"-"`
+	ResC         chan *Result       `json:"-"`
 }
 
 // Command JSON commands sent to lights
