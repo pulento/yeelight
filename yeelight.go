@@ -165,6 +165,7 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 				} else {
 					result.DevID = l.ID
 					resnot = &ResultNotification{&result, nil}
+					l.processResult(&result)
 				}
 			} else {
 				if err == io.EOF {
@@ -231,6 +232,11 @@ func (l *Light) processNotification(n *Notification) error {
 	return nil
 }
 
+func (l *Light) processResult(r *Result) error {
+	log.Println(r)
+	return nil
+}
+
 // SendCommand sends "comm" command to a light with variable parameters
 func (l *Light) SendCommand(comm string, params ...interface{}) (int32, error) {
 	if !l.Support[comm] {
@@ -253,6 +259,11 @@ func (l *Light) SendCommand(comm string, params ...interface{}) (int32, error) {
 		return -1, err
 	}
 	return (atomic.AddInt32(&l.ReqCount, 1) - 1), nil
+}
+
+// WaitResult waits for a result on a request with res ID
+func (l *Light) WaitResult(res int32) {
+
 }
 
 // Message gets light messages
