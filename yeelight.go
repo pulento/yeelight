@@ -105,6 +105,7 @@ func Parse(header http.Header) (*Light, error) {
 		ColorMode:    color,
 		Support:      support,
 		ReqCount:     0,
+		Calls:        make(map[int32]*Command),
 	}
 	return light, nil
 }
@@ -234,6 +235,12 @@ func (l *Light) processNotification(n *Notification) error {
 
 func (l *Light) processResult(r *Result) error {
 	//log.Println(r)
+	if l.Calls[int32(r.ID)] != nil {
+		log.Println("Reply to request:", r.ID)
+		delete(l.Calls, int32(r.ID))
+	} else {
+		log.Println("Received reply to unknown request:", r.ID)
+	}
 	return nil
 }
 
@@ -258,6 +265,7 @@ func (l *Light) SendCommand(comm string, params ...interface{}) (int32, error) {
 	if err != nil {
 		return -1, err
 	}
+	l.Calls[cmd.ID] = cmd
 	return (atomic.AddInt32(&l.ReqCount, 1) - 1), nil
 }
 
