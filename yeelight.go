@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	ssdp "github.com/pulento/go-ssdp"
@@ -231,15 +232,15 @@ func (l *Light) processNotification(n *Notification) error {
 }
 
 // SendCommand sends "comm" command to a light with variable parameters
-func (l *Light) SendCommand(comm string, params ...interface{}) error {
+func (l *Light) SendCommand(comm string, params ...interface{}) (int32, error) {
 	if !l.Support[comm] {
-		return errCommandNotSupported
+		return -1, errCommandNotSupported
 	}
 	if l.Conn == nil {
-		return errNotConnected
+		return -1, errNotConnected
 	}
 	cmd := &Command{
-		ID:     l.ReqCount,
+		ID:     atomic.LoadInt32(&l.ReqCount),
 		Method: comm,
 		Params: params,
 	}
@@ -249,10 +250,9 @@ func (l *Light) SendCommand(comm string, params ...interface{}) error {
 	jCmd = bytes.Join([][]byte{jCmd, endOfCommand}, nil)
 	_, err = l.Conn.Write(jCmd)
 	if err != nil {
-		return err
+		return -1, err
 	}
-	l.ReqCount++
-	return nil
+	return (atomic.AddInt32(&l.ReqCount, 1) - 1), nil
 }
 
 // Message gets light messages
@@ -271,12 +271,12 @@ func (l *Light) Message() (string, error) {
 }
 
 // Toggle toogle light's power on/off
-func (l *Light) Toggle() error {
+func (l *Light) Toggle() (int32, error) {
 	return l.SendCommand("toggle", "")
 }
 
 // SetPower set light's power with effect of duration
-func (l *Light) SetPower(power bool, effect int, duration int) error {
+func (l *Light) SetPower(power bool, effect int, duration int) (int32, error) {
 	var str, p string
 	if power {
 		p = "on"
@@ -293,7 +293,7 @@ func (l *Light) SetPower(power bool, effect int, duration int) error {
 }
 
 // SetBrightness set light's brightness with effect of duration
-func (l *Light) SetBrightness(brightness int, duration int) error {
+func (l *Light) SetBrightness(brightness int, duration int) (int32, error) {
 	var str string
 
 	if duration > 0 {
@@ -306,7 +306,7 @@ func (l *Light) SetBrightness(brightness int, duration int) error {
 }
 
 // SetTemperature set light's color temperature with effect of duration
-func (l *Light) SetTemperature(temp int, duration int) error {
+func (l *Light) SetTemperature(temp int, duration int) (int32, error) {
 	var str string
 
 	if duration > 0 {
@@ -319,11 +319,11 @@ func (l *Light) SetTemperature(temp int, duration int) error {
 }
 
 // SetRGB set light's color in RGB format with effect of duration
-func (l *Light) SetRGB(rgb uint32, duration int) error {
+func (l *Light) SetRGB(rgb uint32, duration int) (int32, error) {
 	var str string
 
 	if rgb > 0xffffff {
-		return errInvalidParam
+		return 0, errInvalidParam
 	}
 	if duration > 0 {
 		str = "smooth"
@@ -335,11 +335,11 @@ func (l *Light) SetRGB(rgb uint32, duration int) error {
 }
 
 // SetHSV set light's color in HSV format with effect of duration
-func (l *Light) SetHSV(hsv uint16, sat uint8, duration int) error {
+func (l *Light) SetHSV(hsv uint16, sat uint8, duration int) (int32, error) {
 	var str string
 
 	if sat > 100 || hsv > 359 {
-		return errInvalidParam
+		return 0, errInvalidParam
 	}
 	if duration > 0 {
 		str = "smooth"
@@ -351,11 +351,11 @@ func (l *Light) SetHSV(hsv uint16, sat uint8, duration int) error {
 }
 
 // SetName set light's name
-func (l *Light) SetName(name string, duration int) error {
+func (l *Light) SetName(name string, duration int) (int32, error) {
 	return l.SendCommand("set_name", name)
 }
 
 // GetProp gets light properties
-func (l *Light) GetProp(props ...interface{}) error {
+func (l *Light) GetProp(props ...interface{}) (int32, error) {
 	return l.SendCommand("get_prop", props...)
 }

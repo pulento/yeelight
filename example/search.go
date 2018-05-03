@@ -60,7 +60,7 @@ func main() {
 
 	for _, l := range lights {
 		prop := "power"
-		err := l.GetProp(prop, "bright")
+		_, err := l.GetProp(prop, "bright")
 		if err != nil {
 			log.Printf("Error getting property %s on %s: %s", prop, l.Address, err)
 		}
