@@ -62,7 +62,7 @@ func Parse(header http.Header) (*Light, error) {
 		return nil, errWithoutYeelightPrefix
 	}
 
-	fw, err := strconv.Atoi(header.Get("FW"))
+	fw, err := strconv.Atoi(header.Get("FW_Ver"))
 	bright, err := strconv.Atoi(header.Get("Bright"))
 	sat, err := strconv.Atoi(header.Get("Sat"))
 	ct, err := strconv.Atoi(header.Get("Ct"))
@@ -233,7 +233,7 @@ func (l *Light) processNotification(n *Notification) error {
 }
 
 func (l *Light) processResult(r *Result) error {
-	log.Println(r)
+	//log.Println(r)
 	return nil
 }
 
