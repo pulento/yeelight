@@ -145,29 +145,25 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 	}
 	log.Printf("Listening Connection established for %s on %s", l.Name, l.Address)
 	go func(c net.Conn) {
-		var notif Notification
-		var result Result
-		var resnot *ResultNotification
 		//make sure connection is closed when method returns
 		defer l.Close()
 
 		for {
+			var resnot *ResultNotification
 			data, err := l.Message()
 			if err == nil {
-				log.Printf("Sending to Channel: %s from %s at %s", strings.TrimSuffix(data, "\r\n"), l.Name, l.Address)
-				err := json.Unmarshal([]byte(data), &notif)
-				err = json.Unmarshal([]byte(data), &result)
+				//log.Printf("Sending to Channel: %s from %s at %s", strings.TrimSuffix(data, "\r\n"), l.Name, l.Address)
+				err := json.Unmarshal([]byte(data), &resnot)
 				if err != nil {
 					log.Println("Error parsing message:", err)
 				}
-				if notif.Method != "" {
-					notif.DevID = l.ID
-					resnot = &ResultNotification{nil, &notif}
-					l.processNotification(&notif)
-				} else {
-					result.DevID = l.ID
-					resnot = &ResultNotification{&result, nil}
-					l.processResult(&result)
+				if resnot.Notification != nil {
+					resnot.Notification.DevID = l.ID
+					l.processNotification(resnot.Notification)
+				}
+				if resnot.Result != nil {
+					resnot.Result.DevID = l.ID
+					l.processResult(resnot.Result)
 				}
 			} else {
 				if err == io.EOF {
