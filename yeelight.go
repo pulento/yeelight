@@ -167,8 +167,12 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 				}
 			} else {
 				if err == io.EOF {
-					log.Printf("Connection closed for %s [%s] to %s", l.ID, l.Name, l.Address)
-					return
+					log.Printf("Connection closed for %s [%s] to %s. Trying reconnect", l.ID, l.Name, l.Address)
+					err = l.Connect()
+					if err != nil {
+						log.Println("Error reconnecting to", l.Address)
+						return
+					}
 				}
 				log.Println("Error receiving message:", err)
 			}
@@ -265,14 +269,17 @@ func (l *Light) SendCommand(comm string, params ...interface{}) (int32, error) {
 	return (atomic.AddInt32(&l.ReqCount, 1) - 1), nil
 }
 
-// WaitResult waits for a result on a request with res ID
-func (l *Light) WaitResult(res int32) *Result {
-	for {
-		r := <-l.ResC
+// WaitResult waits timeout seconds for a result on a request with res ID
+func (l *Light) WaitResult(res int32, timeout int) *Result {
+	select {
+	case r := <-l.ResC:
 		if int32(r.ID) == res {
 			return r
 		}
+	case <-time.After(time.Duration(timeout) * time.Second):
+		return nil
 	}
+	return nil
 }
 
 // Message gets light messages
