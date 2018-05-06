@@ -115,11 +115,10 @@ func Parse(header http.Header) (*Light, error) {
 func (l *Light) Connect() error {
 	d := net.Dialer{Timeout: connTimeout}
 	cn, err := d.Dial("tcp", l.Address)
-
-	l.Conn = cn.(*net.TCPConn)
 	if err != nil {
 		return err
 	}
+	l.Conn = cn.(*net.TCPConn)
 	return nil
 }
 
@@ -244,7 +243,8 @@ func (l *Light) processResult(r *Result) error {
 	return nil
 }
 
-// SendCommand sends "comm" command to a light with variable parameters
+// SendCommand sends "comm" command to a light with "params" parameters
+// returning the request ID for tracking results
 func (l *Light) SendCommand(comm string, params ...interface{}) (int32, error) {
 	if !l.Support[comm] {
 		return -1, errCommandNotSupported
