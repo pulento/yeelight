@@ -53,6 +53,36 @@ func Search(time int, localAddr string) (map[string]*Light, error) {
 	return lightsMap, nil
 }
 
+// SSDPMonitor starts monitor for light's SSDP traffic
+func SSDPMonitor() error {
+	err := ssdp.SetMulticastRecvAddrIPv4("")
+	if err != nil {
+		return err
+	}
+	m := &ssdp.Monitor{
+		Alive:  lightAlive,
+		Bye:    lightBye,
+		Search: lightSearch,
+	}
+	if err := m.Start(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func lightAlive(m *ssdp.AliveMessage) {
+	log.Printf("Alive: From=%s Type=%s USN=%s Location=%s Server=%s MaxAge=%d",
+		m.From.String(), m.Type, m.USN, m.Location, m.Server, m.MaxAge())
+}
+
+func lightBye(m *ssdp.ByeMessage) {
+	log.Printf("Bye: From=%s Type=%s USN=%s", m.From.String(), m.Type, m.USN)
+}
+
+func lightSearch(m *ssdp.SearchMessage) {
+	log.Printf("Search: From=%s Type=%s", m.From.String(), m.Type)
+}
+
 // Parse returns a Yeelight based on the
 // HTTP headers of its SSDP response represented by header
 // it returns an error if something goes wrong during parsing
