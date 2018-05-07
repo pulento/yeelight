@@ -119,6 +119,7 @@ func (l *Light) Connect() error {
 		return err
 	}
 	l.Conn = cn.(*net.TCPConn)
+	l.Reader = bufio.NewReader(l.Conn)
 	return nil
 }
 
@@ -287,8 +288,7 @@ func (l *Light) Message() (string, error) {
 	if l.Conn == nil {
 		return "", errNotConnected
 	}
-	connReader := bufio.NewReader(l.Conn)
-	resp, err := connReader.ReadString('\n')
+	resp, err := l.Reader.ReadString('\n')
 
 	if err != nil {
 		return "", err

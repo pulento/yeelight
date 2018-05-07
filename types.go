@@ -1,6 +1,7 @@
 package yeelight
 
 import (
+	"bufio"
 	"errors"
 	"net"
 )
@@ -34,6 +35,7 @@ type Light struct {
 	Conn         *net.TCPConn       `json:"-"`
 	Calls        map[int32]*Command `json:"-"`
 	ResC         chan *Result       `json:"-"`
+	Reader       *bufio.Reader      `json:"-"`
 }
 
 // Command JSON commands sent to lights
