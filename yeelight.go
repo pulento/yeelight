@@ -120,6 +120,7 @@ func (l *Light) Connect() error {
 	}
 	l.Conn = cn.(*net.TCPConn)
 	l.Reader = bufio.NewReader(l.Conn)
+	l.LastKnown = time.Now().Unix()
 	return nil
 }
 
@@ -294,6 +295,7 @@ func (l *Light) Message() (string, error) {
 		return "", err
 	}
 	//log.Printf("Message from %s at %s: %s", l.Name, l.Address, resp)
+	l.LastKnown = time.Now().Unix()
 	return resp, nil
 }
 
