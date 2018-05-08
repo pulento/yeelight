@@ -55,7 +55,7 @@ func Search(time int, localAddr string) (map[string]*Light, error) {
 
 // SSDPMonitor starts monitor for light's SSDP traffic
 func SSDPMonitor() error {
-	err := ssdp.SetMulticastRecvAddrIPv4("")
+	err := ssdp.SetMulticastRecvAddrIPv4(mcastAddress)
 	if err != nil {
 		return err
 	}
