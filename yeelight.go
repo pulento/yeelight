@@ -54,33 +54,31 @@ func Search(time int, localAddr string) (map[string]*Light, error) {
 }
 
 // SSDPMonitor starts monitor for light's SSDP traffic
-func SSDPMonitor() error {
+func SSDPMonitor(lm map[string]*Light) error {
 	err := ssdp.SetMulticastRecvAddrIPv4(mcastAddress)
 	if err != nil {
 		return err
 	}
-	m := &ssdp.Monitor{
-		Alive:  lightAlive,
-		Bye:    lightBye,
-		Search: lightSearch,
+	mon := &ssdp.Monitor{
+		Alive: func(m *ssdp.AliveMessage) {
+			lightAlive(lm, m)
+		},
 	}
-	if err := m.Start(); err != nil {
+	if err := mon.Start(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func lightAlive(m *ssdp.AliveMessage) {
-	log.Printf("Alive: From=%s Type=%s USN=%s Location=%s Server=%s MaxAge=%d",
-		m.From.String(), m.Type, m.USN, m.Location, m.Server, m.MaxAge())
-}
-
-func lightBye(m *ssdp.ByeMessage) {
-	log.Printf("Bye: From=%s Type=%s USN=%s", m.From.String(), m.Type, m.USN)
-}
-
-func lightSearch(m *ssdp.SearchMessage) {
-	log.Printf("Search: From=%s Type=%s", m.From.String(), m.Type)
+func lightAlive(lm map[string]*Light, m *ssdp.AliveMessage) {
+	id := m.Header().Get("ID")
+	light := lm[id]
+	var name string
+	if light != nil {
+		name = light.Name
+	}
+	log.Printf("SSDP notification Light %s named %s from %s",
+		id, name, m.From.String())
 }
 
 // Parse returns a Yeelight based on the
