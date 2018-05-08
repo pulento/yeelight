@@ -71,14 +71,41 @@ func SSDPMonitor(lm map[string]*Light) error {
 }
 
 func lightAlive(lm map[string]*Light, m *ssdp.AliveMessage) {
-	id := m.Header().Get("ID")
-	light := lm[id]
-	var name string
-	if light != nil {
-		name = light.Name
+	light, err := Parse(m.Header())
+	if err != nil {
+		log.Printf("Invalid SSDP notification from %s: %s", m.Location, err)
+		return
 	}
-	log.Printf("SSDP notification Light %s named %s from %s",
-		id, name, m.From.String())
+	//log.Printf("SSDP notification Light %s named %s from %s: %v",
+	//	light.ID, light.Name, m.From.String(), *light)
+	// Add it to the map if is a new light
+	if lm[light.ID] == nil {
+		log.Println("New light", light.ID)
+		lm[light.ID] = light
+	} else {
+		// Updates existing light
+		log.Println("Update light", light.ID)
+		Copy(lm[light.ID], light)
+	}
+}
+
+// Copy copies just light's values
+// Omitting internal entities like channels, sockets, etc
+func Copy(dst *Light, src *Light) {
+	dst.ID = src.ID
+	dst.Name = src.Name
+	dst.Address = src.Address
+	dst.Model = src.Model
+	dst.CacheControl = src.CacheControl
+	dst.FW = src.FW
+	dst.Power = src.Power
+	dst.Bright = src.Bright
+	dst.Sat = src.Sat
+	dst.CT = src.CT
+	dst.RGB = src.RGB
+	dst.Hue = src.Hue
+	dst.ColorMode = src.ColorMode
+	dst.Support = src.Support
 }
 
 // Parse returns a Yeelight based on the
