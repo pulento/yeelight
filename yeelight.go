@@ -87,6 +87,7 @@ func lightAlive(lm map[string]*Light, m *ssdp.AliveMessage) {
 		log.Println("Update light", light.ID)
 		Copy(lm[light.ID], light)
 	}
+	lm[light.ID].LastSeen = time.Now().Unix()
 }
 
 // Copy copies just light's values
@@ -175,7 +176,7 @@ func (l *Light) Connect() error {
 	}
 	l.Conn = cn.(*net.TCPConn)
 	l.Reader = bufio.NewReader(l.Conn)
-	l.LastKnown = time.Now().Unix()
+	l.LastSeen = time.Now().Unix()
 	return nil
 }
 
@@ -350,7 +351,7 @@ func (l *Light) Message() (string, error) {
 		return "", err
 	}
 	//log.Printf("Message from %s at %s: %s", l.Name, l.Address, resp)
-	l.LastKnown = time.Now().Unix()
+	l.LastSeen = time.Now().Unix()
 	return resp, nil
 }
 

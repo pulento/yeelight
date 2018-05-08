@@ -32,7 +32,7 @@ type Light struct {
 	ColorMode    int                `json:"color-mode"`
 	Support      map[string]bool    `json:"support"`
 	ReqCount     int32              `json:"reqcount"`
-	LastKnown    int64              `json:"lastknown"`
+	LastSeen     int64              `json:"lastseen"`
 	Conn         *net.TCPConn       `json:"-"`
 	Calls        map[int32]*Command `json:"-"`
 	ResC         chan *Result       `json:"-"`
