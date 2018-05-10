@@ -53,15 +53,17 @@ func Search(time int, localAddr string) (map[string]*Light, error) {
 	return lightsMap, nil
 }
 
-// SSDPMonitor starts monitor for light's SSDP traffic
-func SSDPMonitor(lm map[string]*Light) error {
+// SSDPMonitor starts listening light's SSDP traffic
+// lightmap is a map of *Light so it can update it with
+// lights founded, lightfound is called for each light notification
+func SSDPMonitor(lightmap map[string]*Light, lightfound func(light *Light)) error {
 	err := ssdp.SetMulticastRecvAddrIPv4(mcastAddress)
 	if err != nil {
 		return err
 	}
 	mon := &ssdp.Monitor{
 		Alive: func(m *ssdp.AliveMessage) {
-			lightAlive(lm, m)
+			lightAlive(lightmap, m, lightfound)
 		},
 	}
 	if err := mon.Start(); err != nil {
@@ -70,7 +72,7 @@ func SSDPMonitor(lm map[string]*Light) error {
 	return nil
 }
 
-func lightAlive(lm map[string]*Light, m *ssdp.AliveMessage) {
+func lightAlive(lm map[string]*Light, m *ssdp.AliveMessage, lightfound func(light *Light)) {
 	light, err := Parse(m.Header())
 	if err != nil {
 		log.Printf("Invalid SSDP notification from %s: %s", m.Location, err)
@@ -80,14 +82,14 @@ func lightAlive(lm map[string]*Light, m *ssdp.AliveMessage) {
 	//	light.ID, light.Name, m.From.String(), *light)
 	// Add it to the map if is a new light
 	if lm[light.ID] == nil {
-		log.Println("New light", light.ID)
 		lm[light.ID] = light
 	} else {
 		// Updates existing light
-		log.Println("Update light", light.ID)
 		Copy(lm[light.ID], light)
 	}
 	lm[light.ID].LastSeen = time.Now().Unix()
+	// Call the callback
+	lightfound(lm[light.ID])
 }
 
 // Copy copies just light's values
