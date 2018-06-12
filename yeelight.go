@@ -89,6 +89,7 @@ func lightAlive(lm map[string]*Light, m *ssdp.AliveMessage, lightfound func(ligh
 		Copy(lm[light.ID], light)
 	}
 	lm[light.ID].LastSeen = time.Now().Unix()
+	lm[light.ID].refresh = time.After(refreshPeriod)
 	// Call the callback
 	lightfound(lm[light.ID])
 }
@@ -180,6 +181,7 @@ func (l *Light) Connect() error {
 	l.Conn = cn.(*net.TCPConn)
 	l.Reader = bufio.NewReader(l.Conn)
 	l.LastSeen = time.Now().Unix()
+	l.refresh = time.After(refreshPeriod)
 	return nil
 }
 
@@ -231,7 +233,6 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 		//make sure connection is closed when method returns
 		defer l.Close()
 
-		refresher := time.NewTicker(refreshPeriod)
 		mes := make(chan *message)
 		rdone := make(chan bool)
 		go l.receiver(mes, rdone)
@@ -245,8 +246,9 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 			select {
 			case <-done:
 				goto exit
-			case <-refresher.C:
+			case <-l.refresh:
 				log.Println("Periodic Refresh:", l.ID)
+				l.refresh = time.After(refreshPeriod)
 			case d := <-mes:
 				if d.err == nil {
 					err := json.Unmarshal([]byte(d.mess), &resnot)
@@ -276,7 +278,6 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 			}
 		}
 	exit:
-		refresher.Stop()
 		return
 	}(l.Conn)
 
@@ -390,6 +391,7 @@ func (l *Light) Message() (string, error) {
 	}
 	//log.Printf("Message: Message from %s at %s: %s", l.Name, l.Address, resp)
 	l.LastSeen = time.Now().Unix()
+	l.refresh = time.After(refreshPeriod)
 	return resp, nil
 }
 

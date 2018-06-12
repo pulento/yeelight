@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"net"
+	"time"
 )
 
 const (
@@ -17,22 +18,23 @@ const (
 
 // Light is the light :)
 type Light struct {
-	Address      string             `json:"address"`
-	Name         string             `json:"name"`
-	ID           string             `json:"id"`
-	Model        string             `json:"model"`
-	CacheControl string             `json:"cache-control"`
-	FW           int                `json:"fw"`
-	Power        int                `json:"power"`
-	Bright       int                `json:"bright"`
-	Sat          int                `json:"sat"`
-	CT           int                `json:"ct"`
-	RGB          int                `json:"rgb"`
-	Hue          int                `json:"hue"`
-	ColorMode    int                `json:"color-mode"`
-	Support      map[string]bool    `json:"support"`
-	ReqCount     int32              `json:"reqcount"`
-	LastSeen     int64              `json:"lastseen"`
+	Address      string          `json:"address"`
+	Name         string          `json:"name"`
+	ID           string          `json:"id"`
+	Model        string          `json:"model"`
+	CacheControl string          `json:"cache-control"`
+	FW           int             `json:"fw"`
+	Power        int             `json:"power"`
+	Bright       int             `json:"bright"`
+	Sat          int             `json:"sat"`
+	CT           int             `json:"ct"`
+	RGB          int             `json:"rgb"`
+	Hue          int             `json:"hue"`
+	ColorMode    int             `json:"color-mode"`
+	Support      map[string]bool `json:"support"`
+	ReqCount     int32           `json:"reqcount"`
+	LastSeen     int64           `json:"lastseen"`
+	refresh      <-chan time.Time
 	Conn         *net.TCPConn       `json:"-"`
 	Calls        map[int32]*Command `json:"-"`
 	ResC         chan *Result       `json:"-"`
