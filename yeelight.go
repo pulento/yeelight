@@ -17,9 +17,10 @@ import (
 )
 
 var (
-	mcastAddress = "239.255.255.250:1982"
-	searchType   = "wifi_bulb"
-	connTimeout  = 3 * time.Second
+	mcastAddress  = "239.255.255.250:1982"
+	searchType    = "wifi_bulb"
+	connTimeout   = time.Duration(3) * time.Second
+	refreshPeriod = time.Duration(30) * time.Second
 )
 
 // Search search for lights from some time using SSDP and
@@ -193,6 +194,29 @@ func (l *Light) Close() error {
 
 var endOfCommand = []byte{'\r', '\n'}
 
+// This is to send received data and error on the
+// same channel to the Listener
+type message struct {
+	mess string
+	err  error
+}
+
+// Receives data from light should be span on a goroutine
+func (l *Light) receiver(d chan<- *message, done <-chan bool) {
+	for {
+		select {
+		case <-done:
+			return
+		default:
+			data, err := l.Message()
+			if err != nil {
+				log.Println("receiver: Error receiving message:", err)
+			}
+			d <- &message{data, err}
+		}
+	}
+}
+
 // Listen connects to light and listens for events
 // which are sent to notifCh
 func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) {
@@ -207,41 +231,53 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 		//make sure connection is closed when method returns
 		defer l.Close()
 
+		refresher := time.NewTicker(refreshPeriod)
+		mes := make(chan *message)
+		rdone := make(chan bool)
+		go l.receiver(mes, rdone)
+		defer func() {
+			rdone <- true
+		}()
+
 		for {
 			var resnot *ResultNotification
-			data, err := l.Message()
-			if err == nil {
-				//log.Printf("Sending to Channel: %s from %s at %s", strings.TrimSuffix(data, "\r\n"), l.Name, l.Address)
-				err := json.Unmarshal([]byte(data), &resnot)
-				if err != nil {
-					log.Println("Error parsing message:", err)
-				}
-				if resnot.Notification != nil {
-					resnot.Notification.DevID = l.ID
-					l.processNotification(resnot.Notification)
-				}
-				if resnot.Result != nil {
-					resnot.Result.DevID = l.ID
-					l.processResult(resnot.Result)
-				}
-			} else {
-				if err == io.EOF {
-					log.Printf("Connection closed for %s [%s] to %s. Trying reconnect", l.ID, l.Name, l.Address)
-					err = l.Connect()
-					if err != nil {
-						log.Println("Error reconnecting to", l.Address)
-						return
-					}
-				}
-				log.Println("Error receiving message:", err)
-			}
+
 			select {
 			case <-done:
-				return
-			case notifCh <- resnot:
-				notifCh <- resnot
+				goto exit
+			case <-refresher.C:
+				log.Println("Periodic Refresh:", l.ID)
+			case d := <-mes:
+				if d.err == nil {
+					err := json.Unmarshal([]byte(d.mess), &resnot)
+					if err != nil {
+						log.Println("Error parsing message:", err)
+					}
+					if resnot.Notification != nil {
+						resnot.Notification.DevID = l.ID
+						l.processNotification(resnot.Notification)
+					}
+					if resnot.Result != nil {
+						resnot.Result.DevID = l.ID
+						l.processResult(resnot.Result)
+					}
+					notifCh <- resnot
+				} else {
+					if err == io.EOF {
+						log.Printf("Connection closed for %s [%s] to %s. Trying reconnect", l.ID, l.Name, l.Address)
+						err = l.Connect()
+						if err != nil {
+							log.Println("Error reconnecting to", l.Address)
+							goto exit
+						}
+					}
+					log.Println("Error receiving message:", err)
+				}
 			}
 		}
+	exit:
+		refresher.Stop()
+		return
 	}(l.Conn)
 
 	return done, nil
@@ -352,7 +388,7 @@ func (l *Light) Message() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	//log.Printf("Message from %s at %s: %s", l.Name, l.Address, resp)
+	//log.Printf("Message: Message from %s at %s: %s", l.Name, l.Address, resp)
 	l.LastSeen = time.Now().Unix()
 	return resp, nil
 }
