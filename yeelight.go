@@ -265,7 +265,7 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 					}
 					notifCh <- resnot
 				} else {
-					if err == io.EOF {
+					if d.err == io.EOF {
 						log.Printf("Connection closed for %s [%s] to %s. Trying reconnect", l.ID, l.Name, l.Address)
 						err = l.Connect()
 						if err != nil {
