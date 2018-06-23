@@ -17,10 +17,11 @@ import (
 )
 
 var (
-	mcastAddress  = "239.255.255.250:1982"
-	searchType    = "wifi_bulb"
-	connTimeout   = time.Duration(3) * time.Second
-	refreshPeriod = time.Duration(30) * time.Second
+	mcastAddress   = "239.255.255.250:1982"
+	searchType     = "wifi_bulb"
+	connTimeout    = time.Duration(3) * time.Second
+	refreshPeriod  = time.Duration(60) * time.Second
+	commandTimeout = 2
 )
 
 // Search search for lights from some time using SSDP and
@@ -249,6 +250,8 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 			case <-l.refresh:
 				log.Println("Periodic Refresh:", l.ID)
 				l.refresh = time.After(refreshPeriod)
+				reqid, _ := l.GetProp("power", "bright", "ct", "rgb", "hue", "sat")
+				l.WaitResult(reqid, commandTimeout)
 			case d := <-mes:
 				if d.err == nil {
 					err := json.Unmarshal([]byte(d.mess), &resnot)
