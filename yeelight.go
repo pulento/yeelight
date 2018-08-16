@@ -363,7 +363,6 @@ func (l *Light) SendCommand(comm string, params ...interface{}) (int32, error) {
 	jCmd = bytes.Join([][]byte{jCmd, endOfCommand}, nil)
 	_, err = l.Conn.Write(jCmd)
 	if err != nil {
-		log.Printf("Error sending command %s to %s at %s", string(jCmd), l.Name, l.Address)
 		return -1, err
 	}
 	l.Calls[cmd.ID] = cmd
