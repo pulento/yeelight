@@ -154,6 +154,12 @@ func Parse(header http.Header) (*Light, error) {
 		support[v] = true
 	}
 
+	// Workaround for buggy FW. Replace set with set_name
+	if support["set"] {
+		support["set_name"] = true
+		delete(support, "set")
+	}
+
 	light := &Light{
 		Address:      addr[11:],
 		Name:         header.Get("Name"),
@@ -385,6 +391,7 @@ func (l *Light) WaitResult(res int32, timeout int) *Result {
 	select {
 	case r := <-l.ResC:
 		if int32(r.ID) == res {
+			l.Status = ONLINE
 			return r
 		}
 	case <-time.After(time.Duration(timeout) * time.Second):
@@ -491,7 +498,12 @@ func (l *Light) SetHSV(hsv uint16, sat uint8, duration int) (int32, error) {
 
 // SetName set light's name
 func (l *Light) SetName(name string, duration int) (int32, error) {
-	return l.SendCommand("set_name", name)
+
+	r, err := l.SendCommand("set_name", name)
+	if err == nil {
+		l.Name = name
+	}
+	return r, err
 }
 
 // GetProp gets light properties
