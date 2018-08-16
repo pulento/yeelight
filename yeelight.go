@@ -363,6 +363,8 @@ func (l *Light) SendCommand(comm string, params ...interface{}) (int32, error) {
 	jCmd = bytes.Join([][]byte{jCmd, endOfCommand}, nil)
 	_, err = l.Conn.Write(jCmd)
 	if err != nil {
+		log.Printf("Error sending command %s to %s. Trying reconnect", string(jCmd), l.Name)
+		err = l.Connect()
 		return -1, err
 	}
 	l.Calls[cmd.ID] = cmd
