@@ -48,6 +48,8 @@ func Search(time int, localAddr string) (map[string]*Light, error) {
 		}
 		// Lights respond multiple times to a search
 		if lightsMap[light.ID] == nil {
+			// Light found by SSDP
+			light.Status = SSDP
 			lightsMap[light.ID] = light
 		}
 	}
@@ -84,6 +86,8 @@ func lightAlive(lm map[string]*Light, m *ssdp.AliveMessage, lightfound func(ligh
 	//	light.ID, light.Name, m.From.String(), *light)
 	// Add it to the map if is a new light
 	if lm[light.ID] == nil {
+		// Light found by SSDP
+		light.Status = SSDP
 		lm[light.ID] = light
 	} else {
 		// Updates existing light
@@ -130,7 +134,7 @@ func Parse(header http.Header) (*Light, error) {
 	rgb, err := strconv.Atoi(header.Get("Rgb"))
 	hue, err := strconv.Atoi(header.Get("Hue"))
 	color, err := strconv.Atoi(header.Get("Color_mode"))
-	power := OFFLINE
+	power := UNKNOWN
 
 	p := header.Get("Power")
 	if p == "on" {
@@ -174,11 +178,13 @@ func Parse(header http.Header) (*Light, error) {
 
 // Connect connects to a light
 func (l *Light) Connect() error {
+	l.Status = OFFLINE
 	d := net.Dialer{Timeout: connTimeout}
 	cn, err := d.Dial("tcp", l.Address)
 	if err != nil {
 		return err
 	}
+	l.Status = ONLINE
 	l.Conn = cn.(*net.TCPConn)
 	l.Reader = bufio.NewReader(l.Conn)
 	l.LastSeen = time.Now().Unix()
@@ -189,6 +195,7 @@ func (l *Light) Connect() error {
 // Close closes the connection to light
 func (l *Light) Close() error {
 	err := l.Conn.Close()
+	l.Status = OFFLINE
 	if err != nil {
 		return err
 	}
@@ -251,6 +258,7 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 				log.Println("Periodic Refresh:", l.ID)
 				l.refresh = time.After(refreshPeriod)
 				reqid, _ := l.GetProp("power", "bright", "ct", "rgb", "hue", "sat")
+				l.Status = UPDATING
 				l.WaitResult(reqid, commandTimeout)
 			case d := <-mes:
 				if d.err == nil {
@@ -336,6 +344,7 @@ func (l *Light) processNotification(n *Notification) error {
 func (l *Light) processResult(r *Result) error {
 	if l.Calls[int32(r.ID)] != nil {
 		delete(l.Calls, int32(r.ID))
+		l.Status = ONLINE
 		l.ResC <- r
 	} else {
 		log.Println("Received reply to unknown request:", r.ID)

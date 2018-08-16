@@ -7,13 +7,22 @@ import (
 	"time"
 )
 
+// Light's power
 const (
 	// OFF Light off
 	OFF = iota
 	// ON Light on
 	ON = iota
 	// OFFLINE Light unreachable
-	OFFLINE = iota
+	UNKNOWN = iota
+)
+
+// Light's connectivity
+const (
+	OFFLINE  = 0
+	SSDP     = 1
+	UPDATING = 2
+	ONLINE   = 3
 )
 
 // Light is the light :)
@@ -34,6 +43,7 @@ type Light struct {
 	Support      map[string]bool `json:"support"`
 	ReqCount     int32           `json:"reqcount"`
 	LastSeen     int64           `json:"lastseen"`
+	Status       int32           `json:"status"`
 	refresh      <-chan time.Time
 	Conn         *net.TCPConn       `json:"-"`
 	Calls        map[int32]*Command `json:"-"`
