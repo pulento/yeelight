@@ -177,7 +177,7 @@ func Parse(header http.Header) (*Light, error) {
 		Support:      support,
 		ReqCount:     0,
 		Calls:        make(map[int32]*Command),
-		ResC:         make(chan *Result, 1),
+		ResC:         make(chan *Result),
 	}
 	return light, nil
 }
@@ -226,7 +226,7 @@ func (l *Light) receiver(d chan<- *message, done <-chan bool) {
 		default:
 			data, err := l.Message()
 			if err != nil {
-				log.Println("receiver: Error receiving message:", err)
+				log.Printf("receiver: Error receiving message for %s: %s", l.ID, err)
 			}
 			d <- &message{data, err}
 		}
@@ -263,9 +263,11 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 			case <-l.refresh:
 				log.Println("Periodic Refresh:", l.ID)
 				l.refresh = time.After(refreshPeriod)
-				reqid, _ := l.GetProp("power", "bright", "ct", "rgb", "hue", "sat")
-				l.Status = UPDATING
-				l.WaitResult(reqid, commandTimeout)
+				go func() {
+					reqid, _ := l.GetProp("power", "bright", "ct", "rgb", "hue", "sat")
+					l.Status = UPDATING
+					l.WaitResult(reqid, commandTimeout)
+				}()
 			case d := <-mes:
 				if d.err == nil {
 					err := json.Unmarshal([]byte(d.mess), &resnot)
@@ -282,6 +284,7 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 					}
 					notifCh <- resnot
 				} else {
+					log.Printf("Error receiving message for %s: %s", l.ID, d.err)
 					if d.err == io.EOF {
 						log.Printf("Connection closed for %s [%s] to %s. Trying reconnect", l.ID, l.Name, l.Address)
 						err = l.Connect()
@@ -290,7 +293,6 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 							goto exit
 						}
 					}
-					log.Println("Error receiving message:", err)
 				}
 			}
 		}
@@ -393,6 +395,8 @@ func (l *Light) WaitResult(res int32, timeout int) *Result {
 		if int32(r.ID) == res {
 			l.Status = ONLINE
 			return r
+		} else {
+			log.Printf("Result ID unexpected: %d for %s", r.ID, l.ID)
 		}
 	case <-time.After(time.Duration(timeout) * time.Second):
 		return nil
