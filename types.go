@@ -33,7 +33,7 @@ type Light struct {
 	Model        string          `json:"model"`
 	CacheControl string          `json:"cache-control"`
 	FW           int             `json:"fw"`
-	Power        int             `json:"power"`
+	Power        string          `json:"power"`
 	Bright       int             `json:"bright"`
 	Sat          int             `json:"sat"`
 	CT           int             `json:"ct"`

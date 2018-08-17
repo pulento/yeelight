@@ -134,14 +134,6 @@ func Parse(header http.Header) (*Light, error) {
 	rgb, err := strconv.Atoi(header.Get("Rgb"))
 	hue, err := strconv.Atoi(header.Get("Hue"))
 	color, err := strconv.Atoi(header.Get("Color_mode"))
-	power := UNKNOWN
-
-	p := header.Get("Power")
-	if p == "on" {
-		power = ON
-	} else if p == "off" {
-		power = OFF
-	}
 
 	if err != nil {
 		return nil, err
@@ -167,7 +159,7 @@ func Parse(header http.Header) (*Light, error) {
 		Model:        header.Get("Model"),
 		CacheControl: header.Get("Cache-Control"),
 		FW:           fw,
-		Power:        power,
+		Power:        header.Get("Power"),
 		Bright:       bright,
 		Sat:          sat,
 		CT:           ct,
@@ -312,6 +304,7 @@ func (l *Light) processNotification(n *Notification) error {
 		"name":          &l.Name,
 		"id":            &l.ID,
 		"model":         &l.Model,
+		"power":         &l.Power,
 		"cache-control": &l.CacheControl,
 	}
 	mapNotificationI := map[string]*int{
@@ -326,7 +319,7 @@ func (l *Light) processNotification(n *Notification) error {
 
 	if n.Method == "props" {
 		//log.Println(n.Params)
-		for k, v := range n.Params {
+		/*for k, v := range n.Params {
 			if k == "power" {
 				if v == "on" {
 					l.Power = 1
@@ -334,7 +327,7 @@ func (l *Light) processNotification(n *Notification) error {
 					l.Power = 0
 				}
 			}
-		}
+		}*/
 		// FIXME: JSON dedicated struct for params would be better ?
 		for k, v := range mapNotificationI {
 			if n.Params[k] != nil {
@@ -399,9 +392,8 @@ func (l *Light) WaitResult(res int32, timeout int) *Result {
 		if int32(r.ID) == res {
 			l.Status = ONLINE
 			return r
-		} else {
-			log.Printf("Result ID unexpected: %d for %s", r.ID, l.ID)
 		}
+		log.Printf("Result ID unexpected: %d for %s", r.ID, l.ID)
 	case <-time.After(time.Duration(timeout) * time.Second):
 		return nil
 	}
