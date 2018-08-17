@@ -191,6 +191,10 @@ func (l *Light) Connect() error {
 		return err
 	}
 	l.Status = ONLINE
+	if l.Conn != nil {
+		// Clean connection on reconnects
+		l.Close()
+	}
 	l.Conn = cn.(*net.TCPConn)
 	l.Reader = bufio.NewReader(l.Conn)
 	l.LastSeen = time.Now().Unix()
