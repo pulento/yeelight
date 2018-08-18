@@ -39,7 +39,7 @@ type Light struct {
 	CT           int             `json:"ct"`
 	RGB          int             `json:"rgb"`
 	Hue          int             `json:"hue"`
-	ColorMode    int             `json:"color-mode"`
+	ColorMode    int             `json:"color_mode"`
 	Support      map[string]bool `json:"support"`
 	ReqCount     int32           `json:"reqcount"`
 	LastSeen     int64           `json:"lastseen"`
