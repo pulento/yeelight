@@ -53,13 +53,12 @@ func Search(time int, localAddr string) (map[string]*Light, error) {
 			lightsMap[light.ID] = light
 		}
 	}
-	//log.Println(lightsMap)
 	return lightsMap, nil
 }
 
 // SSDPMonitor starts listening light's SSDP traffic
 // lightmap is a map of *Light so it can update it with
-// lights founded, lightfound is called for each light notification
+// lights found, lightfound is called for each light notification
 func SSDPMonitor(lightmap map[string]*Light, lightfound func(light *Light)) error {
 	err := ssdp.SetMulticastRecvAddrIPv4(mcastAddress)
 	if err != nil {
