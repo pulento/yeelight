@@ -69,7 +69,7 @@ func SSDPMonitor(lightmap map[string]*Light, lightfound func(light *Light)) erro
 			lightAlive(lightmap, m, lightfound)
 		},
 	}
-	if err := mon.Start(); err != nil {
+	if err = mon.Start(); err != nil {
 		return err
 	}
 	return nil
