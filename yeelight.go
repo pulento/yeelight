@@ -371,6 +371,10 @@ func (l *Light) SendCommand(comm string, params ...interface{}) (int32, error) {
 		Params: params,
 	}
 	jCmd, err := json.Marshal(cmd)
+	if err != nil {
+		log.Printf("Error formating JSON command to %s", l.Name)
+		return -1, err
+	}
 	log.Printf("Sending command %s to %s at %s", string(jCmd), l.Name, l.Address)
 
 	jCmd = bytes.Join([][]byte{jCmd, endOfCommand}, nil)
