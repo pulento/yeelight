@@ -24,7 +24,7 @@ var (
 	commandTimeout = 2
 )
 
-// Search searchs and update lights for some time using SSDP and
+// Search searches and update lights for some time using SSDP and
 // fills the map with new lights found indexed by its ID. lightfound
 // is called with the newly found light, usually to start listening it
 func Search(time int, localAddr string, lights map[string]*Light, lightfound func(light *Light)) error {
