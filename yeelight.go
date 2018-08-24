@@ -242,7 +242,7 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 		"ID":      l.ID,
 		"address": l.Address,
 		"name":    l.Name,
-	}).Debug("Listening Connection")
+	}).Debug("Listening")
 	go func(c net.Conn) {
 		//make sure connection is closed when method returns
 		defer l.Close()
@@ -384,7 +384,7 @@ func (l *Light) SendCommand(comm string, params ...interface{}) (int32, error) {
 		"ID":      l.ID,
 		"address": l.Address,
 		"name":    l.Name,
-	}).Debugln("Sending command:", string(jCmd))
+	}).Debugln("Sending:", string(jCmd))
 
 	jCmd = bytes.Join([][]byte{jCmd, endOfCommand}, nil)
 	_, err = l.Conn.Write(jCmd)
@@ -392,7 +392,7 @@ func (l *Light) SendCommand(comm string, params ...interface{}) (int32, error) {
 		log.WithFields(log.Fields{
 			"ID":   l.ID,
 			"name": l.Name,
-		}).Errorln("Error sending command:", string(jCmd))
+		}).Errorln("Error sending:", string(jCmd))
 		log.Error("Trying reconnect")
 		err = l.Connect()
 		return -1, err
