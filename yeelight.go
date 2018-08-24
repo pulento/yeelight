@@ -24,36 +24,40 @@ var (
 	commandTimeout = 2
 )
 
-// Search search for lights for some time using SSDP and
-// returns a map of lights found indexed by its ID
-func Search(time int, localAddr string) (map[string]*Light, error) {
+// Search searchs and update lights for some time using SSDP and
+// fills the map with new lights found indexed by its ID. lightfound
+// is called with the newly found light, usually to start listening it
+func Search(time int, localAddr string, lights map[string]*Light, lightfound func(light *Light)) error {
 	//ssdp.Logger = log.New(os.Stderr, "[SSDP] ", log.LstdFlags)
 	err := ssdp.SetMulticastSendAddrIPv4(mcastAddress)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	list, err := ssdp.Search(searchType, time, localAddr)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	// Create a map based on light's ID
-	lightsMap := make(map[string]*Light)
 	for _, srv := range list {
 		light, err := Parse(srv.Header())
 		if err != nil {
 			log.Errorf("Invalid response from %s: %s", srv.Location, err)
-			return nil, err
+			return err
 		}
-		// Lights respond multiple times to a search
-		if lightsMap[light.ID] == nil {
+		// Lights respond multiple times to a search or
+		// we only insert new lights
+		if lights[light.ID] == nil {
 			// Light found by SSDP
 			light.Status = SSDP
-			lightsMap[light.ID] = light
+			lights[light.ID] = light
+			// Call the callback
+			if lightfound != nil {
+				lightfound(light)
+			}
 		}
 	}
-	return lightsMap, nil
+	return nil
 }
 
 // SSDPMonitor starts listening light's SSDP traffic
@@ -96,7 +100,9 @@ func lightAlive(lm map[string]*Light, m *ssdp.AliveMessage, lightfound func(ligh
 	lm[light.ID].LastSeen = time.Now().Unix()
 	lm[light.ID].refresh = time.After(refreshPeriod)
 	// Call the callback
-	lightfound(lm[light.ID])
+	if lightfound != nil {
+		lightfound(lm[light.ID])
+	}
 }
 
 // Copy copies just light's values
