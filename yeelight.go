@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"strconv"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	ssdp "github.com/pulento/go-ssdp"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -43,7 +43,7 @@ func Search(time int, localAddr string) (map[string]*Light, error) {
 	for _, srv := range list {
 		light, err := Parse(srv.Header())
 		if err != nil {
-			log.Printf("Invalid response from %s: %s", srv.Location, err)
+			log.Errorf("Invalid response from %s: %s", srv.Location, err)
 			return nil, err
 		}
 		// Lights respond multiple times to a search
@@ -79,7 +79,7 @@ func SSDPMonitor(lightmap map[string]*Light, lightfound func(light *Light)) erro
 func lightAlive(lm map[string]*Light, m *ssdp.AliveMessage, lightfound func(light *Light)) {
 	light, err := Parse(m.Header())
 	if err != nil {
-		log.Printf("Invalid SSDP notification from %s: %s", m.Location, err)
+		log.Errorf("Invalid SSDP notification from %s: %s", m.Location, err)
 		return
 	}
 	//log.Printf("SSDP notification Light %s named %s from %s: %v",
@@ -222,7 +222,7 @@ func (l *Light) receiver(d chan<- *message, done <-chan bool) {
 		default:
 			data, err := l.Message()
 			if err != nil {
-				log.Printf("receiver: Error receiving message for %s: %s", l.ID, err)
+				log.Errorf("receiver: Error receiving message for %s: %s", l.ID, err)
 			}
 			d <- &message{data, err}
 		}
@@ -238,7 +238,11 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("Listening Connection established for %s on %s", l.Name, l.Address)
+	log.WithFields(log.Fields{
+		"ID":      l.ID,
+		"address": l.Address,
+		"name":    l.Name,
+	}).Debug("Listening Connection")
 	go func(c net.Conn) {
 		//make sure connection is closed when method returns
 		defer l.Close()
@@ -257,7 +261,7 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 			case <-done:
 				goto exit
 			case <-l.refresh:
-				log.Println("Periodic Refresh:", l.ID)
+				log.WithField("ID", l.ID).Debug("Periodic Refresh")
 				l.refresh = time.After(refreshPeriod)
 				go func() {
 					reqid, _ := l.GetProp("power", "bright", "ct", "rgb", "hue", "sat")
@@ -268,7 +272,7 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 				if d.err == nil {
 					err := json.Unmarshal([]byte(d.mess), &resnot)
 					if err != nil {
-						log.Println("Error parsing message:", err)
+						log.Errorln("Error parsing message: ", err)
 					}
 					if resnot.Notification != nil {
 						resnot.Notification.DevID = l.ID
@@ -280,12 +284,19 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 					}
 					notifCh <- resnot
 				} else {
-					log.Printf("Error receiving message for %s: %s", l.ID, d.err)
+					log.WithFields(log.Fields{
+						"ID":    l.ID,
+						"error": d.err,
+					}).Error("Error receiving message")
 					if d.err == io.EOF {
-						log.Printf("Connection closed for %s [%s] to %s. Trying reconnect", l.ID, l.Name, l.Address)
+						log.WithFields(log.Fields{
+							"ID":      l.ID,
+							"address": l.Address,
+							"name":    l.Name,
+						}).Error("Connection closed")
 						err = l.Connect()
 						if err != nil {
-							log.Println("Error reconnecting to", l.Address)
+							log.WithField("address", l.Address).Error("Error reconnecting")
 							goto exit
 						}
 					}
@@ -318,16 +329,6 @@ func (l *Light) processNotification(n *Notification) error {
 	}
 
 	if n.Method == "props" {
-		//log.Println(n.Params)
-		/*for k, v := range n.Params {
-			if k == "power" {
-				if v == "on" {
-					l.Power = 1
-				} else {
-					l.Power = 0
-				}
-			}
-		}*/
 		// FIXME: JSON dedicated struct for params would be better ?
 		for k, v := range mapNotificationI {
 			if n.Params[k] != nil {
@@ -352,7 +353,7 @@ func (l *Light) processResult(r *Result) error {
 		l.Status = ONLINE
 		l.ResC <- r
 	} else {
-		log.Println("Received reply to unknown request:", r.ID)
+		log.WithField("ID", l.ID).Warnln("Reply received to unknown request:", r.ID)
 	}
 	return nil
 }
@@ -373,15 +374,26 @@ func (l *Light) SendCommand(comm string, params ...interface{}) (int32, error) {
 	}
 	jCmd, err := json.Marshal(cmd)
 	if err != nil {
-		log.Printf("Error formating JSON command to %s", l.Name)
+		log.WithFields(log.Fields{
+			"ID":   l.ID,
+			"name": l.Name,
+		}).Error("Error formating JSON")
 		return -1, err
 	}
-	log.Printf("Sending command %s to %s at %s", string(jCmd), l.Name, l.Address)
+	log.WithFields(log.Fields{
+		"ID":      l.ID,
+		"address": l.Address,
+		"name":    l.Name,
+	}).Debugln("Sending command:", string(jCmd))
 
 	jCmd = bytes.Join([][]byte{jCmd, endOfCommand}, nil)
 	_, err = l.Conn.Write(jCmd)
 	if err != nil {
-		log.Printf("Error sending command %s to %s. Trying reconnect", string(jCmd), l.Name)
+		log.WithFields(log.Fields{
+			"ID":   l.ID,
+			"name": l.Name,
+		}).Errorln("Error sending command:", string(jCmd))
+		log.Error("Trying reconnect")
 		err = l.Connect()
 		return -1, err
 	}
@@ -397,7 +409,7 @@ func (l *Light) WaitResult(res int32, timeout int) *Result {
 			l.Status = ONLINE
 			return r
 		}
-		log.Printf("Result ID unexpected: %d for %s", r.ID, l.ID)
+		log.WithField("ID", l.ID).Warnln("Result ID unexpected: ", r.ID)
 	case <-time.After(time.Duration(timeout) * time.Second):
 		return nil
 	}
@@ -414,7 +426,6 @@ func (l *Light) Message() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	//log.Printf("Message: Message from %s at %s: %s", l.Name, l.Address, resp)
 	l.LastSeen = time.Now().Unix()
 	l.refresh = time.After(refreshPeriod)
 	return resp, nil
