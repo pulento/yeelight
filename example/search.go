@@ -21,21 +21,23 @@ func main() {
 		return
 	}
 
-	lights, err := yeelight.Search(*w, *l)
+	lights := make(map[string]*yeelight.Light)
+	resnot := make(chan *yeelight.ResultNotification)
+	done := make(chan bool)
+
+	err := yeelight.Search(*w, *l, lights, func(l *yeelight.Light) {
+		_, lerr := l.Listen(resnot)
+		if lerr != nil {
+			log.Printf("Error connecting to %s: %s", l.Address, lerr)
+		} else {
+			log.Printf("Light %s named %s connected to %s", l.ID, l.Name, l.Address)
+		}
+	})
 	if err != nil {
 		log.Fatal("Error searching lights cannot continue:", err)
 	}
-	resnot := make(chan *yeelight.ResultNotification)
-	done := make(chan bool)
+
 	log.Printf("Waiting for lights events for %d [sec]", *t)
-	for i, l := range lights {
-		_, err = l.Listen(resnot)
-		if err != nil {
-			log.Printf("Error connecting to %s: %s", l.Address, err)
-		} else {
-			log.Printf("Light %s named %s connected to %s", i, l.Name, l.Address)
-		}
-	}
 
 	wg.Add(1)
 	go func(c <-chan *yeelight.ResultNotification, done <-chan bool) {
