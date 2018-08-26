@@ -396,21 +396,17 @@ func (l *Light) SendCommand(comm string, params ...interface{}) (int32, error) {
 	jCmd = bytes.Join([][]byte{jCmd, endOfCommand}, nil)
 	_, err = l.Conn.Write(jCmd)
 	if err != nil {
-		log.WithFields(log.Fields{
+		netError := log.WithFields(log.Fields{
 			"ID":      l.ID,
 			"address": l.Address,
 			"name":    l.Name,
 			"error":   err,
-		}).Error("Error sending")
+		})
+		netError.Error("Error sending")
 		log.Error("Trying reconnect")
 		err = l.Connect()
 		if err != nil {
-			log.WithFields(log.Fields{
-				"ID":      l.ID,
-				"address": l.Address,
-				"name":    l.Name,
-				"error":   err,
-			}).Error("Error reconnecting")
+			netError.Error("Error reconnecting")
 		}
 		return -1, err
 	}
