@@ -22,6 +22,7 @@ var (
 	connTimeout    = time.Duration(3) * time.Second
 	refreshPeriod  = time.Duration(60) * time.Second
 	commandTimeout = 2
+	endOfCommand   = []byte{'\r', '\n'}
 )
 
 // Search searches and update lights for some time using SSDP and
@@ -211,8 +212,6 @@ func (l *Light) Close() error {
 	}
 	return nil
 }
-
-var endOfCommand = []byte{'\r', '\n'}
 
 // This is to send received data and error on the
 // same channel to the Listener
