@@ -191,6 +191,7 @@ func (l *Light) Connect() error {
 	l.Status = ONLINE
 	if l.Conn != nil {
 		// Clean connection on reconnects
+		log.WithField("ID", l.ID).Debug("Cleaning connection")
 		l.Close()
 	}
 	l.Conn = cn.(*net.TCPConn)
@@ -219,7 +220,7 @@ type message struct {
 	err  error
 }
 
-// Receives data from light should be span on a goroutine
+// Receives data from light should span on a goroutine
 func (l *Light) receiver(d chan<- *message, done <-chan bool) {
 	for {
 		select {
@@ -227,9 +228,6 @@ func (l *Light) receiver(d chan<- *message, done <-chan bool) {
 			return
 		default:
 			data, err := l.Message()
-			if err != nil {
-				log.Errorf("receiver: Error receiving message for %s: %s", l.ID, err)
-			}
 			d <- &message{data, err}
 		}
 	}
@@ -278,7 +276,7 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 				if d.err == nil {
 					err := json.Unmarshal([]byte(d.mess), &resnot)
 					if err != nil {
-						log.Errorln("Error parsing message: ", err)
+						log.Error("Error parsing message: ", err)
 					}
 					if resnot.Notification != nil {
 						resnot.Notification.DevID = l.ID
@@ -291,18 +289,21 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 					notifCh <- resnot
 				} else {
 					log.WithFields(log.Fields{
-						"ID":    l.ID,
-						"error": d.err,
+						"ID":      l.ID,
+						"address": l.Address,
+						"name":    l.Name,
+						"error":   d.err,
 					}).Error("Error receiving message")
 					if d.err == io.EOF {
-						log.WithFields(log.Fields{
-							"ID":      l.ID,
-							"address": l.Address,
-							"name":    l.Name,
-						}).Error("Connection closed")
+						log.Error("Connection closed")
 						err = l.Connect()
 						if err != nil {
-							log.WithField("address", l.Address).Error("Error reconnecting")
+							log.WithFields(log.Fields{
+								"ID":      l.ID,
+								"address": l.Address,
+								"name":    l.Name,
+								"error":   d.err,
+							}).Error("Error reconnecting")
 							goto exit
 						}
 					}
@@ -359,7 +360,7 @@ func (l *Light) processResult(r *Result) error {
 		l.Status = ONLINE
 		l.ResC <- r
 	} else {
-		log.WithField("ID", l.ID).Warnln("Reply received to unknown request:", r.ID)
+		log.WithField("ID", l.ID).Warn("Reply received to unknown request:", r.ID)
 	}
 	return nil
 }
@@ -390,17 +391,27 @@ func (l *Light) SendCommand(comm string, params ...interface{}) (int32, error) {
 		"ID":      l.ID,
 		"address": l.Address,
 		"name":    l.Name,
-	}).Debugln("Sending:", string(jCmd))
+	}).Debug("Sending: ", string(jCmd))
 
 	jCmd = bytes.Join([][]byte{jCmd, endOfCommand}, nil)
 	_, err = l.Conn.Write(jCmd)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"ID":   l.ID,
-			"name": l.Name,
-		}).Errorln("Error sending:", string(jCmd))
+			"ID":      l.ID,
+			"address": l.Address,
+			"name":    l.Name,
+			"error":   err,
+		}).Error("Error sending")
 		log.Error("Trying reconnect")
 		err = l.Connect()
+		if err != nil {
+			log.WithFields(log.Fields{
+				"ID":      l.ID,
+				"address": l.Address,
+				"name":    l.Name,
+				"error":   err,
+			}).Error("Error reconnecting")
+		}
 		return -1, err
 	}
 	l.Calls[cmd.ID] = cmd
@@ -415,7 +426,7 @@ func (l *Light) WaitResult(res int32, timeout int) *Result {
 			l.Status = ONLINE
 			return r
 		}
-		log.WithField("ID", l.ID).Warnln("Result ID unexpected: ", r.ID)
+		log.WithField("ID", l.ID).Warn("Result ID unexpected: ", r.ID)
 	case <-time.After(time.Duration(timeout) * time.Second):
 		return nil
 	}
