@@ -243,11 +243,12 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 	if err != nil {
 		return nil, err
 	}
-	log.WithFields(log.Fields{
+	lightLog := log.WithFields(log.Fields{
 		"ID":      l.ID,
 		"address": l.Address,
 		"name":    l.Name,
-	}).Debug("Listening")
+	})
+	lightLog.Debug("Listening")
 	go func(c net.Conn) {
 		//make sure connection is closed when method returns
 		defer l.Close()
@@ -289,22 +290,12 @@ func (l *Light) Listen(notifCh chan<- *ResultNotification) (chan<- bool, error) 
 					}
 					notifCh <- resnot
 				} else {
-					log.WithFields(log.Fields{
-						"ID":      l.ID,
-						"address": l.Address,
-						"name":    l.Name,
-						"error":   d.err,
-					}).Error("Error receiving message")
+					lightLog.WithField("error", d.err).Error("Error receiving message")
 					if d.err == io.EOF {
 						log.Error("Connection closed")
 						err = l.Connect()
 						if err != nil {
-							log.WithFields(log.Fields{
-								"ID":      l.ID,
-								"address": l.Address,
-								"name":    l.Name,
-								"error":   d.err,
-							}).Error("Error reconnecting")
+							lightLog.WithField("error", d.err).Error("Error reconnecting")
 							goto exit
 						}
 					}
@@ -369,6 +360,11 @@ func (l *Light) processResult(r *Result) error {
 // SendCommand sends "comm" command to a light with "params" parameters
 // returning the request ID for tracking results
 func (l *Light) SendCommand(comm string, params ...interface{}) (int32, error) {
+	lightLog := log.WithFields(log.Fields{
+		"ID":      l.ID,
+		"address": l.Address,
+		"name":    l.Name,
+	})
 	if !l.Support[comm] {
 		return -1, errCommandNotSupported
 	}
@@ -382,32 +378,19 @@ func (l *Light) SendCommand(comm string, params ...interface{}) (int32, error) {
 	}
 	jCmd, err := json.Marshal(cmd)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"ID":   l.ID,
-			"name": l.Name,
-		}).Error("Error formating JSON")
+		lightLog.Error("Error formating JSON")
 		return -1, err
 	}
-	log.WithFields(log.Fields{
-		"ID":      l.ID,
-		"address": l.Address,
-		"name":    l.Name,
-	}).Debug("Sending: ", string(jCmd))
+	lightLog.Debug("Sending: ", string(jCmd))
 
 	jCmd = bytes.Join([][]byte{jCmd, endOfCommand}, nil)
 	_, err = l.Conn.Write(jCmd)
 	if err != nil {
-		netError := log.WithFields(log.Fields{
-			"ID":      l.ID,
-			"address": l.Address,
-			"name":    l.Name,
-			"error":   err,
-		})
-		netError.Error("Error sending")
+		lightLog.WithField("error", err).Error("Error sending")
 		log.Error("Trying reconnect")
 		err = l.Connect()
 		if err != nil {
-			netError.Error("Error reconnecting")
+			lightLog.WithField("error", err).Error("Error reconnecting")
 		}
 		return -1, err
 	}
