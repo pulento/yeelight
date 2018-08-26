@@ -188,7 +188,7 @@ func (l *Light) Connect() error {
 	if err != nil {
 		return err
 	}
-	l.Status = ONLINE
+
 	if l.Conn != nil {
 		// Clean connection on reconnects
 		log.WithField("ID", l.ID).Debug("Cleaning connection")
@@ -198,6 +198,7 @@ func (l *Light) Connect() error {
 	l.Reader = bufio.NewReader(l.Conn)
 	l.LastSeen = time.Now().Unix()
 	l.refresh = time.After(refreshPeriod)
+	l.Status = ONLINE
 	return nil
 }
 
