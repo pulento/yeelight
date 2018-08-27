@@ -192,7 +192,6 @@ func (l *Light) Connect() error {
 
 	if l.Conn != nil {
 		// Clean connection on reconnects
-		log.WithField("ID", l.ID).Debug("Cleaning connection")
 		l.Close()
 	}
 	l.Conn = cn.(*net.TCPConn)
